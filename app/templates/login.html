@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ログイン</title>
+</head>
+<link rel="stylesheet" href="/static/login.css">
+<body>
+  <span class="app-title">RecruitMVP</span>
+  <div class="container">
+    <h1>ログイン</h1>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="flash">
+        {% for category, message in messages %}
+          <li class="{{ category }}">{{ message }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+    <form method="post">
+      {{ form.csrf_token }}
+      <label>メールアドレス {{ form.email() }}</label>
+      <label>パスワード {{ form.password() }}</label>
+      {{ form.submit() }}
+    </form>
+  </div>
+</body>
+</html>

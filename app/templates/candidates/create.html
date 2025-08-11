@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+{% block title %}応募者作成{% endblock %}
+{% block breadcrumbs %}
+<span class="breadcrumbs">候補者 › 新規作成</span>
+{% endblock %}
+{% block content %}
+<section class="card">
+  <h3 class="card-title">候補者を新規作成</h3>
+  <form method="post">
+    {{ form.csrf_token }}
+    <div class="grid2">
+      <label class="label">氏名 {{ form.name(class_="input") }}</label>
+      <label class="label">Email {{ form.email(class_="input") }}</label>
+      <label class="label">生年月日 {{ form.birthdate(class_="input") }}</label>
+      <label class="label">応募日 {{ form.applied_at(class_="input") }}</label>
+      <label class="label">学校 {{ form.school(class_="input") }}</label>
+      <label class="label">卒年 {{ form.grad_year(class_="input") }}</label>
+    </div>
+    <div class="grid1" style="margin-top:10px">
+      <label class="label">資格 {{ form.qualifications(class_="textarea", placeholder="例）基本情報技術者、TOEIC 800 など") }}</label>
+      <label class="label">スキルセット {{ form.skills(class_="textarea", placeholder="例）Python, Flask, SQL, React") }}</label>
+      <label class="label">語学 {{ form.languages(class_="textarea", placeholder="例）日本語（N1）, 英語（ビジネス）") }}</label>
+    </div>
+    <div class="form-actions">
+      <button class="btn-primary" type="submit">作成</button>
+      <a class="btn-ghost" href="/candidates">キャンセル</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

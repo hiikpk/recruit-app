@@ -1,0 +1,41 @@
+{% extends "layout.html" %}
+{% block title %}面接{% endblock %}
+{% block breadcrumbs %}{% if form %}選考 / <strong>新規作成</strong>{% else %}選考 / <strong>詳細</strong>{% endif %}{% endblock %}
+{% block content %}
+{% if form %}
+<section class="card">
+  <h3 class="card-title">選考情報を新規作成</h3>
+  <form method="post" enctype="multipart/form-data">
+    {{ form.csrf_token }}
+    <div class="grid2">
+      <label class="label">候補者ID {{ form.candidate_id(class_="input") }}</label>
+  <label class="label">選考ステップ {{ form.step(class_="select") }}</label>
+      <label class="label">日時 {{ form.scheduled_start(class_="input") }}</label>
+      <label class="label">場所 {{ form.location(class_="input") }}</label>
+      <label class="label">URL {{ form.meeting_url(class_="input") }}</label>
+      <label class="label">ランク {{ form.rank(class_="select") }}</label>
+      <label class="label">合否 {{ form.decision(class_="select") }}</label>
+      <label class="label">選考実施担当者 {{ form.interviewer(class_="input") }}</label>
+    </div>
+    <div class="grid1" style="margin-top:10px">
+      <label class="label">評価コメント {{ form.comment(class_="textarea", placeholder="所感・評価ポイントなど") }}</label>
+      <label class="label">録音ファイル {{ form.file() }}</label>
+    </div>
+    <div class="form-actions">
+      <button class="btn-primary" type="submit">作成</button>
+      <a class="btn-ghost" href="{{ url_for('interviews.list_interviews') }}">キャンセル</a>
+    </div>
+  </form>
+</section>
+{% else %}
+<section class="card">
+  <h3 class="card-title">面接詳細 #{{ interview.id }}</h3>
+  <a class="btn-ghost" href="{{ url_for('interviews.download_ics', interview_id=interview.id) }}">ICSダウンロード</a>
+  <h4 class="sub" style="margin-top:12px">録音アップロード</h4>
+  <form action="{{ url_for('interviews.upload_recording', interview_id=interview.id) }}" method="post" enctype="multipart/form-data">
+    <input type="file" name="file">
+    <button class="btn-primary" type="submit">アップロード</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

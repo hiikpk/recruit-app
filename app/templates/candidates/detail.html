@@ -1,0 +1,100 @@
+{% extends "layout.html" %}
+{% block title %}応募者詳細{% endblock %}
+{% block content %}
+<div class="detail-wrap">
+
+  <!-- ステップバー -->
+  {% set stage = (app_row.stage if app_row else 'document') %}
+  <div class="stepper">
+    <div class="step {{ 'active' if stage in ['document','first','second','final'] else '' }}">
+      <span>①</span>書類選考
+    </div>
+    <div class="step {{ 'active' if stage in ['first','second','final'] else '' }}">
+      <span>②</span>一次面接
+    </div>
+    <div class="step {{ 'active' if stage in ['second','final'] else '' }}">
+      <span>③</span>二次面接
+    </div>
+    <div class="step {{ 'active' if stage in ['final'] else '' }}">
+      <span>④</span>最終面接
+    </div>
+  </div>
+
+  <!-- 2カラム：基本 / 付属 -->
+  <div class="columns">
+    <section class="card">
+      <h3 class="card-title">基本情報</h3>
+      <form method="post">
+        {{ form.csrf_token }}
+        <input type="hidden" name="form_name" value="profile">
+        <div class="grid2">
+          <label class="label">氏名 {{ form.name(class_="input") }}</label>
+          <label class="label">Email {{ form.email(class_="input") }}</label>
+          <label class="label">生年月日 {{ form.birthdate(class_="input") }}</label>
+          <label class="label">応募日 {{ form.applied_at(class_="input") }}</label>
+          <label class="label">学校 {{ form.school(class_="input") }}</label>
+          <label class="label">卒年 {{ form.grad_year(class_="input") }}</label>
+        </div>
+        <!-- <div class="grid1">
+          <label class="label">資格 {{ form.qualifications(class_="textarea", placeholder="例）基本情報技術者、TOEIC 800 など") }}</label>
+          <label class="label">スキルセット {{ form.skills(class_="textarea", placeholder="例）Python, Flask, SQL, React") }}</label>
+          <label class="label">語学 {{ form.languages(class_="textarea", placeholder="例）日本語（N1）, 英語（ビジネス）") }}</label>
+        </div> -->
+        <div class="form-actions">
+          <button class="btn-primary" type="submit">保存</button>
+          <a class="btn-ghost" href="/candidates">一覧に戻る</a>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h3 class="card-title">付属情報</h3>
+      <div class="kv">
+        <div><span>資格</span><p>{{ (c.qualifications or '—')|e }}</p></div>
+        <div><span>スキル</span><p>{{ (c.skills or '—')|e }}</p></div>
+        <div><span>語学</span><p>{{ (c.languages or '—')|e }}</p></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 選考情報 -->
+  <section class="card">
+    <div class="card-head">
+      <h3 class="card-title">選考情報{% if app_row %}（Application #{{ app_row.id }}）{% endif %}</h3>
+      <div style="display:flex; gap:8px; align-items:center;">
+        {% if apps and apps|length > 1 %}
+        <form method="get" action="">
+          <select class="select" name="application_id" onchange="this.form.submit()">
+            {% for a in apps %}
+              <option value="{{ a.id }}" {% if app_row and a.id == app_row.id %}selected{% endif %}>Application #{{ a.id }}</option>
+            {% endfor %}
+          </select>
+        </form>
+        {% endif %}
+        <a class="btn-primary" href="{{ url_for('interviews.create_interview') }}{% if app_row %}?application_id={{ app_row.id }}{% endif %}">選考情報を追加</a>
+      </div>
+    </div>
+
+    <div class="grid2">
+      {% for i in interviews %}
+      {% set step_label = {'document':'書類選考','first':'一次面接','second':'二次面接','final':'最終面接'}.get(i.step or 'document', '書類選考') %}
+      {% set decision_label = {'pass':'合格','fail':'不合格','pending':'保留'}.get(i.decision or 'pending', '保留') %}
+      <div class="card">
+        <div class="card-head" style="margin-bottom:4px">
+          <strong class="sub" style="margin:0">{{ step_label }}</strong>
+          <a class="btn-ghost" href="{{ url_for('interviews.detail', interview_id=i.id) }}">詳細</a>
+        </div>
+        <div class="kv">
+          <div><span>実施日</span><p>{{ i.scheduled_start.strftime('%Y-%m-%d %H:%M') }}</p></div>
+          <div><span>合否</span><p>{{ decision_label }}</p></div>
+          {% if i.meeting_url %}<div><span>URL</span><p><a class="link" href="{{ i.meeting_url }}" target="_blank">リンク</a></p></div>{% endif %}
+        </div>
+      </div>
+      {% else %}
+        <p>選考データはまだありません</p>
+      {% endfor %}
+    </div>
+  </section>
+
+</div>
+{% endblock %}

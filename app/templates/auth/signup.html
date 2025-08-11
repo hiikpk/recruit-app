@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+{% block title %}管理者作成{% endblock %}
+{% block breadcrumbs %}管理者 / <strong>新規作成</strong>{% endblock %}
+{% block content %}
+<h2>管理者アカウント作成</h2>
+{% if user_exists %}
+<p class="hint">※ 既にユーザーが存在するため、このページで作成できるのは <strong>管理者ログイン中のみ</strong> です。</p>
+{% endif %}
+<form method="post">
+  {{ form.csrf_token }}
+  <div>企業名 {{ form.org_name() }}</div>
+  <div>管理者メール {{ form.email() }}</div>
+  <div>パスワード {{ form.password() }}</div>
+  <div>パスワード(確認) {{ form.confirm() }}</div>
+  {{ form.submit() }}
+</form>
+{% endblock %}

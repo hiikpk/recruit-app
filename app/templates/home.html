@@ -1,0 +1,97 @@
+{% extends "layout.html" %}
+{% block title %}ダッシュボード{% endblock %}
+{% block breadcrumbs %}ダッシュボード / <strong>全体</strong>{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <div class="title">応募概要</div>
+  <div class="filters">
+    <label>期間
+      <input type="date" value="2025-05-01"> ～ <input type="date" value="2025-08-31">
+    </label>
+  </div>
+</div>
+
+<!-- KPIカード -->
+<div class="kpi-grid">
+  <div class="kpi-card">候補者: <strong>{{ stats.candidates }}</strong></div>
+  <div class="kpi-card">応募: <strong>{{ stats.applications }}</strong></div>
+  <div class="kpi-card">面接: <strong>{{ stats.interviews }}</strong></div>
+  <div class="kpi-card">評価: <strong>{{ stats.evaluations }}</strong></div>
+</div>
+
+<!-- 2つのグラフ（応募推移＝折れ線、合格推移＝棒） -->
+<div class="panel-grid">
+  <div class="panel">
+    <h4 class="panel-title">応募者推移（週次）</h4>
+    <div class="chart-container"><canvas id="lineApplicants"></canvas></div>
+  </div>
+  <div class="panel">
+    <h4 class="panel-title">合格者推移（週次）</h4>
+    <div class="chart-container"><canvas id="barPasses"></canvas></div>
+  </div>
+</div>
+
+<script>
+  // サーバから提供されるサンプルデータ
+  const labels = {{ series.labels | tojson }};
+  const applicants = {{ series.applicants | tojson }};
+  const passes = {{ series.passes | tojson }};
+
+  // 応募（折れ線）
+  new Chart(document.getElementById('lineApplicants'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: '応募',
+        data: applicants,
+        tension: 0.35,
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        borderColor: '#2196f3',
+        backgroundColor: 'rgba(33,150,243,0.12)',
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true } },
+        y: { beginAtZero: true, grid: { color: 'rgba(13,71,161,0.08)' } }
+      },
+      layout: { padding: { left: 8, right: 8, top: 4, bottom: 0 } }
+    }
+  });
+
+  // 合格（棒）
+  new Chart(document.getElementById('barPasses'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: '合格',
+        data: passes,
+        borderWidth: 1.5,
+        borderRadius: 6,
+        backgroundColor: 'rgba(33,150,243,0.35)',
+        borderColor: '#2196f3'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, grid: { color: 'rgba(13,71,161,0.08)' } }
+      },
+      layout: { padding: { left: 8, right: 8, top: 4, bottom: 0 } }
+    }
+  });
+</script>
+{% endblock %}

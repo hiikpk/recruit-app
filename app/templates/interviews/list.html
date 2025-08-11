@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+{% block title %}面接一覧{% endblock %}
+{% block breadcrumbs %}選考 / <strong>一覧</strong>{% endblock %}
+{% block content %}
+<h3>面接一覧</h3>
+<button><a href="{{ url_for('interviews.create_interview') }}">新規作成</a></button>
+<table class="data">
+  <thead>
+  <tr><th>ID</th><th>応募ID</th><th>候補者</th><th>日時</th><th>ランク</th><th>合否</th><th>場所</th><th>操作</th></tr>
+  </thead>
+  <tbody>
+    {% for i in items %}
+      {% set app = app_map.get(i.application_id) %}
+      {% set cand = cand_map.get(app.candidate_id) if app else None %}
+      <tr>
+        <td><a class="link" href="{{ url_for('interviews.detail', interview_id=i.id) }}">{{ i.id }}</a></td>
+        <td>{{ i.application_id }}</td>
+        <td>
+          {% if cand %}
+            <a class="link" href="{{ url_for('candidates.detail', candidate_id=cand.id) }}">{{ cand.name }}</a>
+          {% else %}-{% endif %}
+        </td>
+  <td>{{ i.scheduled_start }}</td>
+  <td>{{ i.rank or '-' }}</td>
+  <td>{{ i.decision or '-' }}</td>
+        <td>{{ i.location or '-' }}</td>
+        <td><a href="{{ url_for('interviews.detail', interview_id=i.id) }}">詳細</a></td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

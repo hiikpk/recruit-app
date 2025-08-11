@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+{% block title %}ユーザー一覧{% endblock %}
+{% block breadcrumbs %}ユーザー / <strong>一覧</strong>{% endblock %}
+{% block content %}
+<h2>ユーザー一覧</h2>
+<table>
+  <tr><th>ID</th><th>Org</th><th>Email</th><th>Role</th><th>作成日</th></tr>
+  {% for u in users %}
+  <tr>
+    <td>{{ u.id }}</td>
+    <td>{{ u.org_id }}</td>
+    <td>{{ u.email }}</td>
+    <td>{{ u.role }}</td>
+    <td>{{ u.created_at }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+{% block title %}候補者一覧{% endblock %}
+{% block breadcrumbs %}候補者 / <strong>一覧</strong>{% endblock %}
+{% block content %}
+<form method="get">
+  <input type="text" name="q" placeholder="氏名検索" value="{{ request.args.get('q','') }}">
+  <button type="submit">検索</button>
+  <a href="/candidates/create">新規作成</a>
+</form>
+<table>
+  <tr><th>ID</th><th>氏名</th><th>Email</th><th>操作</th></tr>
+  {% for c in items %}
+  <tr>
+    <td>{{ c.id }}</td>
+    <td><a href="{{ url_for('candidates.detail', candidate_id=c.id) }}" class="link">{{ c.name }}</a></td>
+    <td>{{ c.email }}</td>
+    <td><a href="{{ url_for('candidates.detail', candidate_id=c.id) }}">詳細/編集</a></td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

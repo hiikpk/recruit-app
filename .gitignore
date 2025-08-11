@@ -1,0 +1,10 @@
+# .gitignore
+.env
+__pycache__/
+*.pyc
+instance/
+*.db
+admin.py
+manage.py
+scratch_import.py
+manual.txt
