@@ -3,15 +3,20 @@ from .base import OrgScopedMixin, TimestampMixin
 
 class Interview(db.Model, OrgScopedMixin, TimestampMixin):
     __tablename__ = "interviews"
+
     id = db.Column(db.Integer, primary_key=True)
-    application_id = db.Column(db.Integer, db.ForeignKey("applications.id"), nullable=False)
-    scheduled_start = db.Column(db.DateTime, nullable=False)
-    location = db.Column(db.String(255))
-    meeting_url = db.Column(db.String(255))
-    ics_token = db.Column(db.String(255))
-    status = db.Column(db.String(50), default="scheduled")
-    step = db.Column(db.String(20))       # document / first / second / final
-    rank = db.Column(db.String(2))        # S/A/B/C
-    decision = db.Column(db.String(20))   # pass/fail/other
+    # OrgScopedMixin: org_id
+    candidate_id = db.Column(db.Integer, db.ForeignKey("candidates.id"), nullable=False)
+
+    # 選考
+    step = db.Column(db.String(20))  # document/first/second/final
+    scheduled_at = db.Column(db.DateTime)  # 実施日時
+    # ics_token = db.Column(db.String(64))   # 招待/再発行の識別子
+    status = db.Column(db.String(20))      # scheduled/done/no_show/canceled
+    result = db.Column(db.String(20))      # pass/fail/pending
     comment = db.Column(db.Text)
-    interviewer = db.Column(db.String(120))
+    interviewer_id = db.Column(db.Integer)  # users.id（任意）
+    ai_score = db.Column(db.Numeric(5, 2))  # 任意
+
+    def __repr__(self) -> str:
+        return f"<Interview id={self.id} candidate_id={self.candidate_id}>"

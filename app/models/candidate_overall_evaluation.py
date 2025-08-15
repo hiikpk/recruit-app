@@ -1,12 +1,18 @@
 from ..extensions import db
 from .base import OrgScopedMixin
 
-class Evaluation(db.Model, OrgScopedMixin):
-    __tablename__ = "interview_evaluations"
+class CandidateOverallEvaluation(db.Model, OrgScopedMixin):
+    __tablename__ = "candidate_overall_evaluations"
 
     id = db.Column(db.Integer, primary_key=True)
     # OrgScopedMixin: org_id
-    interview_id = db.Column(db.Integer, db.ForeignKey("interviews.id"), nullable=False)
+    candidate_id = db.Column(db.Integer, db.ForeignKey("candidates.id"), nullable=False)
+
+    # 履歴
+    version = db.Column(db.Integer, nullable=False, default=1)
+
+    # 集計元
+    aggregated_from = db.Column(db.JSON)  # interview_evaluations.id の配列
 
     # スコア
     overall_score = db.Column(db.Numeric(5, 2))
@@ -16,13 +22,9 @@ class Evaluation(db.Model, OrgScopedMixin):
     honesty = db.Column(db.Numeric(5, 2))
     proactive = db.Column(db.Numeric(5, 2))
 
-    # 要約/原始指標/ファイル
+    # 要約/監査
     gpt_summary = db.Column(db.Text)
-    raw_metrics = db.Column(db.JSON)  # 話速/ポーズ/フィラー/表情 等
-    audio_file_id = db.Column(db.Integer, db.ForeignKey("files.id"))
-
-    # 監査
     created_at = db.Column(db.DateTime, server_default=db.func.now(), nullable=False)
 
     def __repr__(self) -> str:
-        return f"<Evaluation id={self.id} interview_id={self.interview_id}>"
+        return f"<CandidateOverallEvaluation id={self.id} candidate_id={self.candidate_id}>"
