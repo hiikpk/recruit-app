@@ -19,6 +19,10 @@ class Interview(db.Model, OrgScopedMixin, TimestampMixin):
     ai_score = db.Column(db.Numeric(5, 2))  # 任意
     # store latest full transcript text for quick access
     transcript_text = db.Column(db.Text)
+    # legacy / denormalized fields present in DB
+    rank = db.Column(db.String(2), nullable=True)
+    decision = db.Column(db.String(20), nullable=True)
+    interviewer = db.Column(db.String(120), nullable=True)
 
     def __repr__(self) -> str:
         return f"<Interview id={self.id} candidate_id={self.candidate_id}>"

@@ -7,6 +7,54 @@ from ..extensions import rq
 from ..jobs.evaluate import evaluate_interview
 from ..services.speaking_metrics import speaking_metrics_from_utterances
 from flask import current_app
+from ..services.postprocess import process_utterances
+
+
+def _format_transcript_text(raw_text, utterances=None, lang='ja'):
+    """Return a human-friendly transcript string.
+    - If utterances provided, build speaker-labelled paragraphs.
+    - Otherwise, insert newlines by sentence-ending punctuation (simple heuristic).
+    """
+    if utterances:
+        lines = []
+        for u in utterances:
+            spk = u.get('speaker') if u.get('speaker') is not None else u.get('speaker_label')
+            # normalize speaker label
+            try:
+                spk_label = f"話者{int(spk)}" if spk is not None else "話者0"
+            except Exception:
+                spk_label = str(spk) if spk is not None else "話者0"
+            text = (u.get('text') or '').strip()
+            if not text and raw_text:
+                text = raw_text.strip()
+            if text:
+                lines.append(f"{spk_label}: {text}")
+        return "\n\n".join(lines) if lines else (raw_text or '')
+
+    # No utterances: do simple sentence-splitting heuristics
+    if not raw_text:
+        return ''
+    s = raw_text.strip()
+    if lang and lang.lower().startswith('ja'):
+        # insert newline after Japanese sentence enders
+        for sep in ['。', '！', '？']:
+            s = s.replace(sep, sep + "\n\n")
+        # collapse multiple newlines
+        while '\n\n\n' in s:
+            s = s.replace('\n\n\n', '\n\n')
+        # if still no newlines, split roughly every 120 chars
+        if '\n' not in s:
+            parts = [s[i:i+120].strip() for i in range(0, len(s), 120)]
+            s = '\n\n'.join(parts)
+        return s
+    else:
+        # English/others: split on dot/question/exclamation followed by space
+        import re
+        s = re.sub(r'([\.\!\?])\s+', r"\1\n\n", s)
+        if '\n' not in s:
+            parts = [s[i:i+120].strip() for i in range(0, len(s), 120)]
+            s = '\n\n'.join(parts)
+        return s
 
 def _run_transcribe(recording_id: int, lang: str = "ja"):
     rec = Recording.query.get(recording_id)
@@ -16,6 +64,11 @@ def _run_transcribe(recording_id: int, lang: str = "ja"):
     if rec.storage_url and rec.storage_url.startswith('file://'):
         filename = rec.storage_url.replace('file://', '')
     # prefer the raw Deepgram response so we can compute detailed metrics
+    try:
+        dg_opts = current_app.config.get('DEEPGRAM_OPTIONS', {}) or {}
+        current_app.logger.info('Deepgram options: %s', dg_opts)
+    except Exception:
+        dg_opts = {}
     raw = deepgram_raw_transcribe(audio_bytes=audio, language=lang, filename=filename)
     # best-effort extract text
     text = None
@@ -76,12 +129,21 @@ def _run_transcribe(recording_id: int, lang: str = "ja"):
     except Exception:
         utterances = None
 
-    tr = Transcript(org_id=rec.org_id, recording_id=rec.id, text=text or '', lang=lang)
+    # Create initial Transcript row in 'processing' state so UI can reflect work in progress.
+    tr = Transcript(org_id=rec.org_id, recording_id=rec.id, text=text or '', lang=lang, status='processing')
+    db.session.add(tr)
+    db.session.commit()
     # attach raw utterances and derived metrics when available
     if utterances:
-        tr.utterances = utterances
+        # apply post-processing heuristics to improve merging/backchannels/switchbacks
         try:
-            metrics = speaking_metrics_from_utterances(utterances)
+            proc_utterances = process_utterances(utterances)
+        except Exception:
+            proc_utterances = utterances
+
+        tr.utterances = proc_utterances
+        try:
+            metrics = speaking_metrics_from_utterances(proc_utterances)
             # compute filler rate using word-level fallback when possible
             filler_tokens = current_app.config.get('FILLER_TOKENS', 'えー,あの,えっと,うーん,うー,あー,um,uh').split(',')
             total_words = 0
@@ -104,33 +166,87 @@ def _run_transcribe(recording_id: int, lang: str = "ja"):
                     for f in filler_tokens:
                         filler_count += t.count(f)
             metrics['filler_rate'] = (filler_count / total_words) if total_words else 0.0
+            # Normalize metrics: ensure dict, parse nested JSON strings
+            try:
+                import json
+                if isinstance(metrics, str):
+                    try:
+                        metrics = json.loads(metrics)
+                    except Exception:
+                        try:
+                            metrics = eval(metrics)
+                        except Exception:
+                            metrics = {}
+                # If speaking_metrics is a JSON string, parse it
+                sm = metrics.get('speaking_metrics') if isinstance(metrics, dict) else None
+                if isinstance(sm, str):
+                    try:
+                        metrics['speaking_metrics'] = json.loads(sm)
+                    except Exception:
+                        try:
+                            metrics['speaking_metrics'] = eval(sm)
+                        except Exception:
+                            # leave as string if unparsable
+                            pass
+            except Exception:
+                # if normalization fails, ensure metrics is a dict
+                try:
+                    metrics = dict(metrics) if metrics else {}
+                except Exception:
+                    metrics = {}
             tr.metrics = metrics
+        except Exception:
+            tr.metrics = None
         except Exception:
             tr.metrics = None
     else:
         tr.utterances = None
         tr.metrics = None
-    db.session.add(tr)
-    db.session.commit()
-    # also persist full transcript text to Interview for quick access
+    # Format a readable transcript for UI: prefer utterances when available
     try:
-        if rec and getattr(rec, 'interview_id', None):
-            from ..models.interview import Interview
-            interview = Interview.query.get(int(rec.interview_id))
-            if interview:
-                interview.transcript_text = tr.text
-                db.session.add(interview)
-                db.session.commit()
+        formatted = _format_transcript_text(text, utterances=utterances, lang=lang)
+        tr.text = formatted or (text or '')
     except Exception:
-        # do not fail the job if interview update fails
-        pass
-    # enqueue evaluation job for the interview (if recording.interview_id present)
+        # fallback to raw text
+        tr.text = text or ''
+
     try:
-        if rec and getattr(rec, "interview_id", None):
-            rq.enqueue(evaluate_interview, int(rec.interview_id))
-    except Exception:
-        # don't fail the transcribe job if enqueue fails
-        pass
+        db.session.add(tr)
+        db.session.commit()
+        # also persist full transcript text to Interview for quick access
+        try:
+            if rec and getattr(rec, 'interview_id', None):
+                from ..models.interview import Interview
+                interview = Interview.query.get(int(rec.interview_id))
+                if interview:
+                    interview.transcript_text = tr.text
+                    db.session.add(interview)
+                    db.session.commit()
+        except Exception:
+            # do not fail the job if interview update fails
+            current_app.logger.exception('Failed to update Interview.transcript_text')
+        # enqueue evaluation job for the interview (if recording.interview_id present)
+        try:
+            if rec and getattr(rec, "interview_id", None):
+                rq.enqueue(evaluate_interview, int(rec.interview_id))
+        except Exception:
+            current_app.logger.exception('Failed to enqueue evaluate_interview')
+        # mark transcript as successful
+        tr.status = 'ok'
+        tr.error = None
+        db.session.add(tr)
+        db.session.commit()
+    except Exception as e:
+        # persist error state
+        try:
+            tr.status = 'error'
+            tr.error = str(e)
+            db.session.add(tr)
+            db.session.commit()
+        except Exception:
+            current_app.logger.exception('Failed to persist transcript error state')
+        # re-raise so RQ shows job failure in logs if desired
+        raise
     return tr.id
 
 

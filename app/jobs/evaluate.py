@@ -5,6 +5,7 @@ from ..models.application import Application
 from ..models.interview import Interview
 from datetime import datetime
 from flask import current_app
+import json
 
 
 def compute_heuristic_scores(metrics, rubric):
@@ -13,8 +14,21 @@ def compute_heuristic_scores(metrics, rubric):
     Returns a dict keyed by rubric labels. If a rubric cannot be estimated,
     value may be None.
     """
+    # Normalize metrics: accept dict or JSON string. If invalid, fallback to empty.
     if not metrics:
         return {r: None for r in rubric}
+    try:
+        if isinstance(metrics, str):
+            metrics = json.loads(metrics)
+    except Exception:
+        # if parsing fails, try to coerce simple reprs, otherwise fallback
+        try:
+            # attempt eval as last resort (limited risk in controlled env)
+            metrics = eval(metrics)
+        except Exception:
+            metrics = {}
+    if not isinstance(metrics, dict):
+        metrics = {}
 
     # pick the speaker with largest speaking ratio as candidate
     spk_metrics = None
