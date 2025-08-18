@@ -5,6 +5,24 @@
 
   <!-- ステップバー -->
   {% set stage = (app_row.stage if app_row else 'document') %}
+  <!-- ヘッダー: 氏名、氏名読み、ステータス（表示のみ） -->
+  {% set display_status = (app_row.status if app_row and app_row.status else (c.status if c.status else '')) %}
+  {% set status_label_map = {'applied':'新着応募','screening':'選考中','offer':'内定','hired':'入社','rejected':'不採用','withdrawn':'辞退'} %}
+  <div class="candidate-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px">
+    <div>
+  <h2 style="margin:0">{{ c.name }}</h2>
+  <div style="color:#666; font-size:0.95rem">{{ c.name_yomi or '—' }}</div>
+  <div style="color:#666; font-size:0.95rem">{{ c.applying_position or '—' }} / {{ c.nationality or '—' }}</div>
+    </div>
+    <div>
+    <span class="status-badge" style="padding:6px 10px; border-radius:6px; background:#eee; color:#222">{{ status_label_map.get(display_status, '—') }}</span>
+    {# Overall evaluation summary link #}
+  {% set overall = overall if overall is defined else (c.candidate_overall_evaluations|first if c.candidate_overall_evaluations is defined else None) %}
+  {% if overall %}
+  <a class="btn-primary" href="{{ url_for('candidates.overall_evaluation', candidate_id=c.id) }}" style="margin-left:8px">総合スコア: {{ ("%0.2f"%overall.overall_score) if overall.overall_score is not none else '-' }}</a>
+  {% endif %}
+    </div>
+  </div>
   <div class="stepper">
     <div class="step {{ 'active' if stage in ['document','first','second','final'] else '' }}">
       <span>①</span>書類選考
@@ -20,42 +38,55 @@
     </div>
   </div>
 
-  <!-- 2カラム：基本 / 付属 -->
-  <div class="columns">
-    <section class="card">
-      <h3 class="card-title">基本情報</h3>
-      <form method="post">
-        {{ form.csrf_token }}
-        <input type="hidden" name="form_name" value="profile">
+  <!-- 2カラム：formで左右に配置 -->
+  <form method="post">
+    {{ form.csrf_token }}
+    <input type="hidden" name="form_name" value="profile">
+    <div class="columns">
+      <section class="card">
+        <h3 class="card-title">基本情報</h3>
         <div class="grid2">
           <label class="label">氏名 {{ form.name(class_="input") }}</label>
+          <label class="label">氏名（ふりがな） {{ form.name_yomi(class_="input") }}</label>
           <label class="label">Email {{ form.email(class_="input") }}</label>
+          <label class="label">電話番号 {{ form.phonenumber(class_="input") }}</label>
           <label class="label">生年月日 {{ form.birthdate(class_="input") }}</label>
           <label class="label">応募日 {{ form.applied_at(class_="input") }}</label>
-          <label class="label">学校 {{ form.school(class_="input") }}</label>
-          <label class="label">卒年 {{ form.grad_year(class_="input") }}</label>
+          <label class="label">選考ポジション {{ form.applying_position(class_="input") }}</label>
+          <label class="label">国籍 {{ form.nationality(class_="input") }}</label>
         </div>
-        <!-- <div class="grid1">
-          <label class="label">資格 {{ form.qualifications(class_="textarea", placeholder="例）基本情報技術者、TOEIC 800 など") }}</label>
-          <label class="label">スキルセット {{ form.skills(class_="textarea", placeholder="例）Python, Flask, SQL, React") }}</label>
-          <label class="label">語学 {{ form.languages(class_="textarea", placeholder="例）日本語（N1）, 英語（ビジネス）") }}</label>
-        </div> -->
-        <div class="form-actions">
+
+        <div class="grid2" style="margin-top:10px">
+          <label class="label">流入元 {{ form.channel(class_="input") }}</label>
+          <label class="label">流入元詳細 {{ form.channel_detail(class_="input") }}</label>
+          <label class="label">オファー日 {{ form.offer_date(class_="input") if form.offer_date is defined else '' }}</label>
+          <label class="label">内定承諾日 {{ form.acceptance_date(class_="input") if form.acceptance_date is defined else '' }}</label>
+          <label class="label">入社日 {{ form.join_date(class_="input") if form.join_date is defined else '' }}</label>
+          <label class="label">辞退日 {{ form.decline_date(class_="input") if form.decline_date is defined else '' }}</label>
+        </div>
+
+        <div class="form-actions" style="margin-top:12px">
           <button class="btn-primary" type="submit">保存</button>
           <a class="btn-ghost" href="/candidates">一覧に戻る</a>
         </div>
-      </form>
-    </section>
+      </section>
 
-    <section class="card">
-      <h3 class="card-title">付属情報</h3>
-      <div class="kv">
-        <div><span>資格</span><p>{{ (c.qualifications or '—')|e }}</p></div>
-        <div><span>スキル</span><p>{{ (c.skills or '—')|e }}</p></div>
-        <div><span>語学</span><p>{{ (c.languages or '—')|e }}</p></div>
-      </div>
-    </section>
-  </div>
+      <section class="card">
+        <h3 class="card-title">スキル・経歴</h3>
+        <div class="grid2">
+          <label class="label">学校 {{ form.school(class_="input") }}</label>
+          <label class="label">卒年 {{ form.grad_year(class_="input") }}</label>
+          <label class="label">現職 {{ form.current_job(class_="input") }}</label>
+          <label class="label">履歴書（未実装）</label>
+        </div>
+        <div class="grid1" style="margin-top:10px">
+          <label class="label">資格 {{ form.qualifications(class_="textarea", placeholder="例）基本情報技術者、TOEIC 800 など") }}</label>
+          <label class="label">スキルセット {{ form.skills(class_="textarea", placeholder="例）Python, Flask, SQL, React") }}</label>
+          <label class="label">語学 {{ form.languages(class_="textarea", placeholder="例）日本語（N1）, 英語（ビジネス）") }}</label>
+        </div>
+      </section>
+    </div>
+  </form>
 
   <!-- 選考情報 -->
   <section class="card">
@@ -78,15 +109,18 @@
     <div class="grid2">
       {% for i in interviews %}
       {% set step_label = {'document':'書類選考','first':'一次面接','second':'二次面接','final':'最終面接'}.get(i.step or 'document', '書類選考') %}
-      {% set decision_label = {'pass':'合格','fail':'不合格','pending':'保留'}.get(i.decision or 'pending', '保留') %}
+  {% set decision_label = {'pass':'合格','fail':'不合格','pending':'保留'}.get(i.result or 'pending', '保留') %}
       <div class="card">
         <div class="card-head" style="margin-bottom:4px">
           <strong class="sub" style="margin:0">{{ step_label }}</strong>
           <a class="btn-ghost" href="{{ url_for('interviews.detail', interview_id=i.id) }}">詳細</a>
         </div>
         <div class="kv">
-          <div><span>実施日</span><p>{{ i.scheduled_start.strftime('%Y-%m-%d %H:%M') }}</p></div>
-          <div><span>合否</span><p>{{ decision_label }}</p></div>
+          <div><span>実施日</span><p>{{ i.scheduled_at.strftime('%Y-%m-%d %H:%M') if i.scheduled_at else '-' }}</p></div>
+          <div><span>合否</span><p>{{ {'pass':'合格','fail':'不合格','pending':'保留'}.get(i.result or 'pending', '保留') }}</p></div>
+          {# show latest AI evaluation overall score for this interview if present #}
+          {% set ev = (evaluations | selectattr('interview_id','equalto', i.id) | list | first) if evaluations else None %}
+          {% if ev %}<div><span>AIスコア</span><p>{{ ("%0.2f"%ev.overall_score) if ev.overall_score is not none else '-' }}</p></div>{% endif %}
           {% if i.meeting_url %}<div><span>URL</span><p><a class="link" href="{{ i.meeting_url }}" target="_blank">リンク</a></p></div>{% endif %}
         </div>
       </div>

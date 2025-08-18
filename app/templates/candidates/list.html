@@ -2,19 +2,37 @@
 {% block title %}候補者一覧{% endblock %}
 {% block breadcrumbs %}候補者 / <strong>一覧</strong>{% endblock %}
 {% block content %}
-<form method="get">
+<form method="get" style="display:flex; gap:8px; align-items:center; margin-bottom:10px">
   <input type="text" name="q" placeholder="氏名検索" value="{{ request.args.get('q','') }}">
-  <button type="submit">検索</button>
+  <input type="date" name="applied_at" value="{{ request.args.get('applied_at','') }}">
+  <input type="text" name="applying_position" placeholder="ポジション" value="{{ request.args.get('applying_position','') }}">
+  <input type="text" name="nationality" placeholder="国籍" value="{{ request.args.get('nationality','') }}">
+  <select name="status">
+    <option value="">すべてのステータス</option>
+    <option value="applied" {% if request.args.get('status')=='applied' %}selected{% endif %}>新着応募</option>
+    <option value="screening" {% if request.args.get('status')=='screening' %}selected{% endif %}>選考中</option>
+    <option value="offer" {% if request.args.get('status')=='offer' %}selected{% endif %}>内定</option>
+    <option value="hired" {% if request.args.get('status')=='hired' %}selected{% endif %}>入社</option>
+    <option value="rejected" {% if request.args.get('status')=='rejected' %}selected{% endif %}>不採用</option>
+    <option value="withdrawn" {% if request.args.get('status')=='withdrawn' %}selected{% endif %}>辞退</option>
+  </select>
+  <input type="text" name="channel" placeholder="流入元" value="{{ request.args.get('channel','') }}">
+  <button type="submit">絞込</button>
   <a href="/candidates/create">新規作成</a>
 </form>
 <table>
-  <tr><th>ID</th><th>氏名</th><th>Email</th><th>操作</th></tr>
+  <tr><th>ID</th><th>応募日</th><th>氏名</th><th>選考ポジション</th><th>国籍</th><th>ステータス</th></tr>
   {% for c in items %}
   <tr>
     <td>{{ c.id }}</td>
+    <td>{{ c.applied_at.strftime('%Y-%m-%d') if c.applied_at else '—' }}</td>
     <td><a href="{{ url_for('candidates.detail', candidate_id=c.id) }}" class="link">{{ c.name }}</a></td>
-    <td>{{ c.email }}</td>
-    <td><a href="{{ url_for('candidates.detail', candidate_id=c.id) }}">詳細/編集</a></td>
+    <td>{{ c.applying_position }}</td>
+    <td>{{ c.nationality }}</td>
+    <td>
+      {% set status_map = {'applied':'新着応募','screening':'選考中','offer':'内定','hired':'入社','rejected':'不採用','withdrawn':'辞退'} %}
+      {{ status_map.get(c.status, '—') }}
+    </td>
   </tr>
   {% endfor %}
 </table>

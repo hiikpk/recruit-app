@@ -5,8 +5,8 @@ from .forms import InterviewForm
 from ...extensions import db, rq
 from ...models.interview import Interview
 from ...models.recording import Recording
-from ...models.application import Application
 from ...models.candidate import Candidate
+from ...models.evaluation import Evaluation
 from ...services.ics import build_ics
 from ...services.storage import save_file
 from ...jobs.transcribe import transcribe_recording
@@ -17,14 +17,13 @@ from datetime import timedelta
 @bp.get("")
 @login_required
 def list_interviews():
-    query = Interview.query.filter_by(org_id=current_user.org_id).order_by(Interview.scheduled_start.desc())
+    query = Interview.query.filter_by(org_id=current_user.org_id).order_by(Interview.scheduled_at.desc())
     # 直近順
     items = query.all()
-    # Application/Candidate をまとめて取得（簡易: テンプレートで参照）
-    app_map = {a.id: a for a in Application.query.filter(Application.id.in_([i.application_id for i in items or []])).all()}
-    cand_ids = list({a.candidate_id for a in app_map.values()}) if app_map else []
+    # Candidate をまとめて取得（テンプレートで表示）
+    cand_ids = list({i.candidate_id for i in items or []}) if items else []
     cand_map = {c.id: c for c in Candidate.query.filter(Candidate.id.in_(cand_ids)).all()} if cand_ids else {}
-    return render_template("interviews/list.html", items=items, app_map=app_map, cand_map=cand_map)
+    return render_template("interviews/list.html", items=items, cand_map=cand_map)
 
 @bp.route("/create", methods=["GET","POST"])
 @login_required
@@ -32,39 +31,32 @@ def create_interview():
     form = InterviewForm()
     # Pre-fill candidate_id if provided via query string (backward compat via application_id)
     if request.method == 'GET':
-        app_id = request.args.get('application_id')
+        # app_id = request.args.get('application_id')
         cand_id = request.args.get('candidate_id')
         if cand_id:
             form.candidate_id.data = str(cand_id)
-        elif app_id:
-            app_row = Application.query.filter_by(id=int(app_id), org_id=current_user.org_id).first()
-            if app_row:
-                form.candidate_id.data = str(app_row.candidate_id)
+        # elif app_id:
+        #     app_row = Application.query.filter_by(id=int(app_id), org_id=current_user.org_id).first()
+        #     if app_row:
+        #         form.candidate_id.data = str(app_row.candidate_id)
     if form.validate_on_submit():
-        # Resolve candidate_id: prefer explicit, else derive from application
-        # Candidate is required now
+        # Resolve candidate_id from the form
         cand_id_val = int(form.candidate_id.data)
-        # Ensure an Application exists for this candidate in this org (use latest or create one)
-        app_row = Application.query.filter_by(org_id=current_user.org_id, candidate_id=cand_id_val)\
-                                   .order_by(Application.id.desc()).first()
-        if not app_row:
-            app_row = Application(org_id=current_user.org_id, candidate_id=cand_id_val)
-            db.session.add(app_row); db.session.commit()
         i = Interview(
             org_id=current_user.org_id,
-            application_id=app_row.id,
-            scheduled_start=form.scheduled_start.data,
-            location=form.location.data,
-            meeting_url=form.meeting_url.data,
-            ics_token=str(uuid4())
+            candidate_id=cand_id_val,
+            scheduled_at=form.scheduled_at.data,
         )
         # Optional evaluation fields
         i.step = form.step.data or None
-        i.rank = form.rank.data or None
-        i.decision = form.decision.data or None
+        i.status = form.status.data or None
+        i.result = form.result.data or None
         i.comment = form.comment.data or None
         i.interviewer = form.interviewer.data or None
-        db.session.add(i); db.session.commit()
+        # allow initial transcript text on create
+        i.transcript_text = form.transcript_text.data or None
+        db.session.add(i)
+        db.session.commit()
         # If a file was uploaded, save recording and redirect to analyze endpoint
         f = None
         try:
@@ -80,11 +72,85 @@ def create_interview():
         return redirect(url_for("interviews.list_interviews"))
     return render_template("interviews/detail.html", form=form, interview=None)
 
-@bp.get("/<int:interview_id>")
+@bp.route("/<int:interview_id>", methods=["GET","POST"])
 @login_required
 def detail(interview_id):
     i = Interview.query.filter_by(id=interview_id, org_id=current_user.org_id).first_or_404()
-    return render_template("interviews/detail.html", interview=i, form=None)
+    form = InterviewForm(obj=i)
+    # Pre-fill candidate_id for validation/read-only display
+    try:
+        form.candidate_id.data = str(i.candidate_id)
+    except Exception:
+        pass
+
+    if form.validate_on_submit():
+        # Update interview fields from form
+        i.scheduled_at = form.scheduled_at.data or i.scheduled_at
+        i.step = form.step.data or None
+        i.status = form.status.data or None
+        i.result = form.result.data or None
+        i.comment = form.comment.data or None
+        i.interviewer = form.interviewer.data or None
+        i.location = form.location.data or None
+        i.meeting_url = form.meeting_url.data or None
+        # save edited transcript if provided
+        try:
+            i.transcript_text = form.transcript_text.data or i.transcript_text
+        except Exception:
+            pass
+        db.session.commit()
+        flash("選考情報を更新しました", "success")
+        return redirect(url_for('interviews.detail', interview_id=i.id))
+
+    # Load evaluations for this interview (latest first)
+    evaluations = Evaluation.query.filter_by(org_id=current_user.org_id, interview_id=i.id).order_by(Evaluation.created_at.desc()).all()
+    # Load latest transcript metrics for this interview (if any)
+    metrics = None
+    try:
+        from ...extensions import db
+        q = db.text(
+            """
+            SELECT t.metrics FROM transcripts t
+            JOIN recordings r ON r.id = t.recording_id
+            WHERE r.interview_id = :int_id
+            ORDER BY t.created_at DESC
+            LIMIT 1
+            """
+        )
+        res = db.session.execute(q, {"int_id": i.id}).fetchone()
+        metrics = res[0] if res and len(res) > 0 else None
+    except Exception:
+        metrics = None
+
+    # Load latest transcript text for this interview (if any)
+    transcript_text = None
+    try:
+        q2 = db.text(
+            """
+            SELECT t.text FROM transcripts t
+            JOIN recordings r ON r.id = t.recording_id
+            WHERE r.interview_id = :int_id
+            ORDER BY t.created_at DESC
+            LIMIT 1
+            """
+        )
+        res2 = db.session.execute(q2, {"int_id": i.id}).fetchone()
+        transcript_text = res2[0] if res2 and len(res2) > 0 else None
+        if transcript_text:
+            # attach to the interview object for template convenience
+            try:
+                i.transcript_text = transcript_text
+            except Exception:
+                pass
+        # ensure the form textarea shows the latest transcript when editing
+        try:
+            form.transcript_text.data = transcript_text or getattr(i, 'transcript_text', None)
+        except Exception:
+            pass
+    except Exception:
+        transcript_text = None
+
+    return render_template("interviews/detail.html", interview=i, form=form, evaluations=evaluations, metrics=metrics, transcript_text=transcript_text)
 
 @bp.get("/<int:interview_id>/ics")
 @login_required
@@ -92,8 +158,8 @@ def download_ics(interview_id):
     i = Interview.query.filter_by(id=interview_id, org_id=current_user.org_id).first_or_404()
     ics = build_ics(current_app.config['UID_DOMAIN'],
                     title=f"Interview #{i.id}",
-                    start=i.scheduled_start,
-                    end=(i.scheduled_start + timedelta(hours=1)),
+                    start=i.scheduled_at,
+                    end=(i.scheduled_at + timedelta(hours=1)),
                     location=i.location or "",
                     description=i.meeting_url or "")
     return send_file(BytesIO(ics.encode('utf-8')), as_attachment=True,

@@ -5,29 +5,33 @@
 <div class="toolbar">
   <div class="title">応募概要</div>
   <div class="filters">
-    <label>期間
-      <input type="date" value="2025-05-01"> ～ <input type="date" value="2025-08-31">
-    </label>
+    <form id="rangeForm" method="get">
+      <label>期間
+        <input type="date" name="start" value="{{ request.args.get('start', '') }}"> ～
+        <input type="date" name="end" value="{{ request.args.get('end', '') }}">
+      </label>
+      <button class="btn-ghost" type="submit">更新</button>
+    </form>
   </div>
 </div>
 
 <!-- KPIカード -->
 <div class="kpi-grid">
-  <div class="kpi-card">候補者: <strong>{{ stats.candidates }}</strong></div>
-  <div class="kpi-card">応募: <strong>{{ stats.applications }}</strong></div>
-  <div class="kpi-card">面接: <strong>{{ stats.interviews }}</strong></div>
-  <div class="kpi-card">評価: <strong>{{ stats.evaluations }}</strong></div>
+  <div class="kpi-card">アクティブ数<br><strong>{{ stats.candidates }}</strong></div>
+  <div class="kpi-card">選択期間中の応募者数<br><strong>{{ series.applicants | sum }}</strong></div>
+  <div class="kpi-card">本日の面接数<br><strong>{{ stats.interviews }}</strong></div>
+  <div class="kpi-card">選択期間中の内定承諾者数<br><strong>{{ series.hires | sum if series.hires is defined else 0 }}</strong></div>
 </div>
 
 <!-- 2つのグラフ（応募推移＝折れ線、合格推移＝棒） -->
 <div class="panel-grid">
   <div class="panel">
-    <h4 class="panel-title">応募者推移（週次）</h4>
+    <h4 class="panel-title">応募者数（日別）</h4>
     <div class="chart-container"><canvas id="lineApplicants"></canvas></div>
   </div>
   <div class="panel">
-    <h4 class="panel-title">合格者推移（週次）</h4>
-    <div class="chart-container"><canvas id="barPasses"></canvas></div>
+    <h4 class="panel-title">入社人数（月別）</h4>
+    <div class="chart-container"><canvas id="barHires"></canvas></div>
   </div>
 </div>
 
@@ -35,7 +39,8 @@
   // サーバから提供されるサンプルデータ
   const labels = {{ series.labels | tojson }};
   const applicants = {{ series.applicants | tojson }};
-  const passes = {{ series.passes | tojson }};
+  const hiresMonths = {{ series.hires_months | tojson }};
+  const hires = {{ series.hires | tojson }};
 
   // 応募（折れ線）
   new Chart(document.getElementById('lineApplicants'), {
@@ -67,18 +72,18 @@
     }
   });
 
-  // 合格（棒）
-  new Chart(document.getElementById('barPasses'), {
+  // 入社人数（月別）
+  new Chart(document.getElementById('barHires'), {
     type: 'bar',
     data: {
-      labels,
+      labels: hiresMonths,
       datasets: [{
-        label: '合格',
-        data: passes,
+        label: '入社予定',
+        data: hires,
         borderWidth: 1.5,
         borderRadius: 6,
-        backgroundColor: 'rgba(33,150,243,0.35)',
-        borderColor: '#2196f3'
+        backgroundColor: 'rgba(76,175,80,0.35)',
+        borderColor: '#4caf50'
       }]
     },
     options: {

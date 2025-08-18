@@ -1,0 +1,52 @@
+/Users/IkariHidetoshi_1/recruit-app/.venv/lib/python3.12/site-packages/click/core.py:1193: UserWarning: The parameter --serializer is used more than once. Remove its duplicate as parameters should be unique.
+  parser = self.make_parser(ctx)
+/Users/IkariHidetoshi_1/recruit-app/.venv/lib/python3.12/site-packages/click/core.py:1193: UserWarning: The parameter -S is used more than once. Remove its duplicate as parameters should be unique.
+  parser = self.make_parser(ctx)
+/Users/IkariHidetoshi_1/recruit-app/.venv/lib/python3.12/site-packages/click/core.py:1186: UserWarning: The parameter --serializer is used more than once. Remove its duplicate as parameters should be unique.
+  self.parse_args(ctx, args)
+/Users/IkariHidetoshi_1/recruit-app/.venv/lib/python3.12/site-packages/click/core.py:1186: UserWarning: The parameter -S is used more than once. Remove its duplicate as parameters should be unique.
+  self.parse_args(ctx, args)
+20:47:52 Worker rq:worker:48211e36f4f94741a3810681c9a1dc79 started with PID 57582, version 1.16.2
+20:47:52 Subscribing to channel rq:pubsub:48211e36f4f94741a3810681c9a1dc79
+20:47:52 *** Listening on default...
+20:47:52 Cleaning registries for queue: default
+20:47:54 default: app.jobs.transcribe.transcribe_recording(2, 'ja') (4f1d8a7e-d2c1-4787-896e-c069252a98b1)
+20:47:56 default: Job OK (4f1d8a7e-d2c1-4787-896e-c069252a98b1)
+20:47:56 Result is kept for 500 seconds
+20:47:56 default: app.jobs.evaluate.evaluate_interview(4) (136c66b3-9db3-44f7-abc5-e48f7e9d07f1)
+20:47:56 [Job 136c66b3-9db3-44f7-abc5-e48f7e9d07f1]: exception raised while executing (app.jobs.evaluate.evaluate_interview)
+Traceback (most recent call last):
+  File "/Users/IkariHidetoshi_1/recruit-app/.venv/lib/python3.12/site-packages/rq/worker.py", line 1430, in perform_job
+    rv = job.perform()
+         ^^^^^^^^^^^^^
+  File "/Users/IkariHidetoshi_1/recruit-app/.venv/lib/python3.12/site-packages/rq/job.py", line 1280, in perform
+    self._result = self._execute()
+                   ^^^^^^^^^^^^^^^
+  File "/Users/IkariHidetoshi_1/recruit-app/.venv/lib/python3.12/site-packages/rq/job.py", line 1317, in _execute
+    result = self.func(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/IkariHidetoshi_1/recruit-app/app/jobs/evaluate.py", line 45, in evaluate_interview
+    interview = Interview.query.get(interview_id)
+                ^^^^^^^^^^^^^^^
+  File "/Users/IkariHidetoshi_1/recruit-app/.venv/lib/python3.12/site-packages/flask_sqlalchemy/model.py", line 23, in __get__
+    cls, session=cls.__fsa__.session()  # type: ignore[arg-type]
+                 ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/IkariHidetoshi_1/recruit-app/.venv/lib/python3.12/site-packages/sqlalchemy/orm/scoping.py", line 220, in __call__
+    sess = self.registry()
+           ^^^^^^^^^^^^^^^
+  File "/Users/IkariHidetoshi_1/recruit-app/.venv/lib/python3.12/site-packages/sqlalchemy/util/_collections.py", line 632, in __call__
+    key = self.scopefunc()
+          ^^^^^^^^^^^^^^^^
+  File "/Users/IkariHidetoshi_1/recruit-app/.venv/lib/python3.12/site-packages/flask_sqlalchemy/session.py", line 111, in _app_ctx_id
+    return id(app_ctx._get_current_object())  # type: ignore[attr-defined]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/IkariHidetoshi_1/recruit-app/.venv/lib/python3.12/site-packages/werkzeug/local.py", line 519, in _get_current_object
+    raise RuntimeError(unbound_message) from None
+RuntimeError: Working outside of application context.
+
+This typically means that you attempted to use functionality that needed
+the current application. To solve this, set up an application context
+with app.app_context(). See the documentation for more information.
+
+20:49:02 Worker 48211e36f4f94741a3810681c9a1dc79 [PID 57582]: warm shut down requested
+20:49:02 Unsubscribing from channel rq:pubsub:48211e36f4f94741a3810681c9a1dc79

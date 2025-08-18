@@ -12,6 +12,8 @@ class Candidate(db.Model, OrgScopedMixin, TimestampMixin):
     phonenumber = db.Column(db.String(40))
     birthdate = db.Column(db.Date)
     memo = db.Column(db.Text)
+    applying_position = db.Column(db.String(100), index=True)
+    nationality = db.Column(db.String(100), index=True)
 
     # スキル・経歴
     school = db.Column(db.String(200))
@@ -23,7 +25,7 @@ class Candidate(db.Model, OrgScopedMixin, TimestampMixin):
     skills = db.Column(db.JSON)          # ["Python","Flask","SQL"]
 
     # 選考情報
-    applied_at = db.Column(db.DateTime, server_default=db.func.now(), nullable=False)
+    applied_at = db.Column(db.Date, server_default=db.func.now(), nullable=False)
     status = db.Column(db.String(30), index=True)  # applied/screening/offer/hired/rejected/withdrawn
     offer_date = db.Column(db.Date)
     acceptance_date = db.Column(db.Date)

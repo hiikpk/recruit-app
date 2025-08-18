@@ -17,4 +17,12 @@ class Config:
     S3_ACCESS_KEY = os.getenv("S3_ACCESS_KEY")
     S3_SECRET_KEY = os.getenv("S3_SECRET_KEY")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
     UID_DOMAIN = os.getenv("UID_DOMAIN", "example.local")
+    # speaking heuristic and evaluation weights
+    HEURISTIC_WEIGHT_AI = float(os.getenv('HEURISTIC_WEIGHT_AI', '0.6'))
+    HEURISTIC_WEIGHT_H = float(os.getenv('HEURISTIC_WEIGHT_H', '0.4'))
+    # transcription/utterance fallback thresholds
+    DG_WORD_GAP_THRESHOLD = float(os.getenv('DG_WORD_GAP_THRESHOLD', '0.35'))
+    # filler tokens, comma separated
+    FILLER_TOKENS = os.getenv('FILLER_TOKENS', 'えー,あの,えっと,うーん,うー,あー,um,uh')
