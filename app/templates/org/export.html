@@ -1,0 +1,29 @@
+{% extends 'layout.html' %}
+{% block content %}
+<div class="container">
+  <h2>データエクスポート</h2>
+  <p>エクスポートしたいテーブルを選択してください。</p>
+  <form method="post">
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="tables" value="candidates" id="chk_candidates" checked>
+      <label class="form-check-label" for="chk_candidates">候補者 (candidates)</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="tables" value="evaluations" id="chk_evaluations" checked>
+      <label class="form-check-label" for="chk_evaluations">評価 (evaluations)</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="tables" value="interviews" id="chk_interviews" checked>
+      <label class="form-check-label" for="chk_interviews">選考 (interviews)</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="tables" value="candidate_overall_evaluations" id="chk_overall" checked>
+      <label class="form-check-label" for="chk_overall">総合評価 (candidate_overall_evaluations)</label>
+    </div>
+    <div class="mt-3">
+    <button class="btn btn-primary" type="submit">エクスポート</button>
+    <a class="btn btn-secondary" href="{{ url_for('org.org_settings') }}">一覧に戻る</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

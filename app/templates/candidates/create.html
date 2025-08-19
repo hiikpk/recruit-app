@@ -8,19 +8,38 @@
   <h3 class="card-title">候補者を新規作成</h3>
   <form method="post">
     {{ form.csrf_token }}
-    <div class="grid2">
-      <label class="label">氏名 {{ form.name(class_="input") }}</label>
-      <label class="label">Email {{ form.email(class_="input") }}</label>
-      <label class="label">生年月日 {{ form.birthdate(class_="input") }}</label>
-      <label class="label">応募日 {{ form.applied_at(class_="input") }}</label>
-      <label class="label">学校 {{ form.school(class_="input") }}</label>
-      <label class="label">卒年 {{ form.grad_year(class_="input") }}</label>
-    </div>
-    <div class="grid1" style="margin-top:10px">
-      <label class="label">資格 {{ form.qualifications(class_="textarea", placeholder="例）基本情報技術者、TOEIC 800 など") }}</label>
-      <label class="label">スキルセット {{ form.skills(class_="textarea", placeholder="例）Python, Flask, SQL, React") }}</label>
-      <label class="label">語学 {{ form.languages(class_="textarea", placeholder="例）日本語（N1）, 英語（ビジネス）") }}</label>
-    </div>
+      <div class="form-section">
+        <h4 class="section-title">基礎情報</h4>
+        <hr style="border: none; border-bottom: 1px solid #ddd; margin-bottom: 10px;">
+        <div class="grid2">
+          <label class="label">氏名 {{ form.name(class_="input") }}</label>
+          <label class="label">氏名（ふりがな） {{ form.name_yomi(class_="input") }}</label>
+          <label class="label">Email {{ form.email(class_="input") }}</label>
+          <label class="label">電話番号 {{ form.phonenumber(class_="input") }}</label>
+          <label class="label">生年月日 {{ form.birthdate(class_="input") }}</label>
+          <label class="label">応募日 {{ form.applied_at(class_="input") }}</label>
+           <label class="label">選考ポジション {{ form.applying_position(class_="input") }}</label>
+           <label class="label">国籍 {{ form.nationality(class_="input") }}</label>
+          <label class="label">流入元 {{ form.channel(class_="input") }}</label>
+          <label class="label">流入元詳細 {{ form.channel_detail(class_="input") }}</label>
+          <label class="label">メモ {{ form.memo(class_="textarea", placeholder="自由記入欄") }}</label>
+        </div>
+      </div>
+      <div class="form-section" style="margin-top:20px;">
+        <h4 class="section-title">スキル・経歴</h4>
+        <hr style="border: none; border-bottom: 1px solid #ddd; margin-bottom: 10px;">
+        <div class="grid2">
+          <label class="label">最終学歴 {{ form.school(class_="input") }}</label>
+          <label class="label">卒年 {{ form.grad_year(class_="input") }}</label>
+          <label class="label">現職 {{ form.current_job(class_="input") }}</label>
+          <label class="label">履歴書ファイルID {{ form.resume_file_id(class_="input") }}</label>
+        </div>
+        <div class="grid1" style="margin-top:10px">
+          <label class="label">資格 {{ form.qualifications(class_="textarea", placeholder="例）基本情報技術者、TOEIC 800 など") }}</label>
+          <label class="label">スキルセット {{ form.skills(class_="textarea", placeholder="例）Python, Flask, SQL, React") }}</label>
+          <label class="label">語学 {{ form.languages(class_="textarea", placeholder="例）日本語（N1）, 英語（ビジネス）") }}</label>
+        </div>
+      </div>
     <div class="form-actions">
       <button class="btn-primary" type="submit">作成</button>
       <a class="btn-ghost" href="/candidates">キャンセル</a>

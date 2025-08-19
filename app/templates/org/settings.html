@@ -1,0 +1,86 @@
+{% extends 'layout.html' %}
+{% block content %}
+<div class="container">
+  <div class="row mb-4 align-items-stretch">
+    <div class="col-12">
+      <h2>管理メニュー</h2>
+    </div>
+    <div class="col-md-4 col-sm-6 mb-3">
+      <div class="card h-100">
+        <a href="/auth/users" class="d-block h-100 text-decoration-none text-body">
+          <div class="card-body">
+            <h5 class="card-title">ユーザー一覧</h5>
+            <p class="card-text">組織のユーザーを一覧・編集します。</p>
+          </div>
+        </a>
+      </div>
+    </div>
+    <div class="col-md-4 col-sm-6 mb-3">
+      <div class="card h-100">
+        <a href="/auth/signup" class="d-block h-100 text-decoration-none text-body">
+          <div class="card-body">
+            <h5 class="card-title">ユーザー新規作成</h5>
+            <p class="card-text">管理者が新しいユーザーを手動で作成します。</p>
+          </div>
+        </a>
+      </div>
+    </div>
+    <div class="col-md-4 col-sm-6 mb-3">
+      <div class="card h-100">
+        <a href="/org/heuristic" class="d-block h-100 text-decoration-none text-body">
+          <div class="card-body">
+            <h5 class="card-title">AI評価パラメータ設定</h5>
+            <p class="card-text">AI評価とヒューリスティックの重みや閾値を調整します。</p>
+          </div>
+        </a>
+      </div>
+    </div>
+    <div class="col-md-4 col-sm-6 mb-3">
+      <div class="card h-100">
+        <a href="/org/export" class="d-block h-100 text-decoration-none text-body">
+          <div class="card-body">
+            <h5 class="card-title">データエクスポート</h5>
+            <p class="card-text">組織のデータをJSONでダウンロードします。</p>
+          </div>
+        </a>
+      </div>
+    </div>
+    <div class="col-md-4 col-sm-6 mb-3">
+      <div class="card h-100">
+        <a href="/org/import" class="d-block h-100 text-decoration-none text-body">
+          <div class="card-body">
+            <h5 class="card-title">データインポート</h5>
+            <p class="card-text">CSVテンプレートをダウンロードして候補者を一括インポートします。</p>
+          </div>
+        </a>
+      </div>
+    </div>
+    <div class="col-md-4 col-sm-6 mb-3">
+      <div class="card h-100">
+        <a href="/org/users" class="d-block h-100 text-decoration-none text-body">
+          <div class="card-body">
+            <h5 class="card-title">その他設定</h5>
+            <p class="card-text">組織設定や権限管理などの追加設定。</p>
+          </div>
+        </a>
+      </div>
+    </div>
+    <div class="col-md-4 col-sm-6 mb-3">
+      <div class="card h-100">
+        <form method="post" action="{{ url_for('auth.logout') }}" style="height:100%; margin:0">
+          <div class="card-body" style="display:flex; flex-direction:column; justify-content:space-between; height:100%">
+            <div>
+              <h5 class="card-title">ログアウト</h5>
+              <p class="card-text">現在のセッションを終了します。</p>
+            </div>
+            <div>
+              <button class="btn btn-outline-danger" type="submit">ログアウト</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

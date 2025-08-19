@@ -1,3 +1,3 @@
 from flask import Blueprint
 bp = Blueprint("jobs", __name__)
-from . import routes  # noqa
+from . import forms  # noqa (forms registers job endpoints)

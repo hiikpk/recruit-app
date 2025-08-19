@@ -3,30 +3,119 @@
 {% block breadcrumbs %}選考 / <strong>一覧</strong>{% endblock %}
 {% block content %}
 <h3>面接一覧</h3>
-<button><a href="{{ url_for('interviews.create_interview') }}">新規作成</a></button>
+<div style="display:flex; gap:12px; align-items:center; margin-bottom:12px">
+  <div>
+    <a class="btn-primary" href="{{ url_for('interviews.create_interview') }}">新規作成</a>
+  </div>
+  <form method="get" style="display:flex; gap:8px; align-items:center">
+    <input type="hidden" name="tz" id="tz_field" value="">
+    <label>開始 <input type="date" name="start" value="{{ filters.start if filters.start is defined else '' }}"></label>
+    <label>終了 <input type="date" name="end" value="{{ filters.end if filters.end is defined else '' }}"></label>
+    <label>状態
+      <select name="status">
+        <option value="">全て</option>
+        <option value="scheduled" {% if filters.status == 'scheduled' %}selected{% endif %}>scheduled</option>
+        <option value="done" {% if filters.status == 'done' %}selected{% endif %}>done</option>
+        <option value="no_show" {% if filters.status == 'no_show' %}selected{% endif %}>no_show</option>
+        <option value="canceled" {% if filters.status == 'canceled' %}selected{% endif %}>canceled</option>
+      </select>
+    </label>
+    <button class="btn-ghost" type="submit">絞り込み</button>
+  </form>
+</div>
+
+{% if todays and todays|length > 0 %}
+<section class="card" style="margin-bottom:12px">
+  <h4 class="card-title">本日の面接（{{ todays|length }} 件）</h4>
+  <div style="display:flex; gap:10px; flex-wrap:wrap">
+    {% for i in todays %}
+      {% set cand = cand_map.get(i.candidate_id) %}
+      <div class="card" style="min-width:220px; max-width:320px; padding:10px">
+  <div style="font-weight:bold">{{ cand.name if cand else '候補者' }} <small style="color:#666">#{{ i.id }}</small></div>
+  <div style="margin-top:6px">日時: {% if i.scheduled_at %}{{ i.scheduled_at.strftime('%Y/%m/%d %H:%M') }}{% else %}-{% endif %}</div>
+        <div>状態: {{ i.status or '-' }} / 結果: {{ i.result or '-' }}</div>
+        <div style="margin-top:8px"><a href="{{ url_for('interviews.detail', interview_id=i.id) }}">詳細</a></div>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 <table class="data">
   <thead>
-  <tr><th>ID</th><th>応募ID</th><th>候補者</th><th>日時</th><th>ランク</th><th>合否</th><th>場所</th><th>操作</th></tr>
+  <tr>
+    <th>日時</th>
+    <th>ステップ</th>
+    <th>候補者</th>
+    <th>応募日</th>
+    <th>選考ポジション</th>
+    <th>ステータス</th>
+    <th>合否</th>
+    <th>AIスコア</th>
+  </tr>
   </thead>
   <tbody>
-    {% for i in items %}
-      {% set app = app_map.get(i.application_id) %}
-      {% set cand = cand_map.get(app.candidate_id) if app else None %}
+  {% for i in items %}
+      {% set cand = cand_map.get(i.candidate_id) %}
       <tr>
-        <td><a class="link" href="{{ url_for('interviews.detail', interview_id=i.id) }}">{{ i.id }}</a></td>
-        <td>{{ i.application_id }}</td>
+        <td>
+          <a class="link" href="{{ url_for('interviews.detail', interview_id=i.id) }}">{% if i.scheduled_at %}{{ i.scheduled_at.strftime('%Y/%m/%d %H:%M') }}{% else %}-{% endif %}</a>
+        </td>
+        <td>{{ i.step or '-' }}</td>
         <td>
           {% if cand %}
             <a class="link" href="{{ url_for('candidates.detail', candidate_id=cand.id) }}">{{ cand.name }}</a>
           {% else %}-{% endif %}
         </td>
-  <td>{{ i.scheduled_start }}</td>
-  <td>{{ i.rank or '-' }}</td>
-  <td>{{ i.decision or '-' }}</td>
-        <td>{{ i.location or '-' }}</td>
-        <td><a href="{{ url_for('interviews.detail', interview_id=i.id) }}">詳細</a></td>
+  <td>{% if cand and cand.applied_at %}{{ cand.applied_at.strftime('%Y/%m/%d') }}{% else %}-{% endif %}</td>
+        <td>{{ cand.applying_position if cand and cand.applying_position else '-' }}</td>
+        <td>{{ i.status or '-' }}</td>
+        <td>{{ i.result or '-' }}</td>
+        <td>{{ ("%0.2f"%i.ai_score) if i.ai_score is not none else '-' }}</td>
       </tr>
     {% endfor %}
   </tbody>
 </table>
+{% if pagination and pagination.pages and pagination.pages > 1 %}
+<div style="margin-top:12px; display:flex; gap:8px; align-items:center">
+  {% if pagination.has_prev %}
+    <a class="btn-ghost" href="{{ make_page_url(pagination.prev_num) }}">前へ</a>
+  {% endif %}
+  <span>ページ {{ pagination.page }} / {{ pagination.pages }}</span>
+  {% for p in range(1, pagination.pages + 1) %}
+    {% if p == pagination.page %}
+      <strong>{{ p }}</strong>
+    {% else %}
+      <a class="btn-ghost" href="{{ make_page_url(p) }}">{{ p }}</a>
+    {% endif %}
+  {% endfor %}
+  {% if pagination.has_next %}
+    <a class="btn-ghost" href="{{ make_page_url(pagination.next_num) }}">次へ</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Ensure user's timezone offset (minutes) is sent so server can compute "today" in user-local time.
+(() => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('tz')) {
+      const tz = new Date().getTimezoneOffset();
+      params.set('tz', tz);
+      // replace to avoid navigation history pollution
+      const newUrl = window.location.pathname + '?' + params.toString();
+      window.location.replace(newUrl);
+      return;
+    }
+    // populate hidden field on the filter form so future submits keep tz
+    const tzField = document.getElementById('tz_field');
+    if (tzField) tzField.value = params.get('tz');
+  } catch (e) {
+    console && console.warn && console.warn('tz script error', e);
+  }
+})();
+</script>
 {% endblock %}

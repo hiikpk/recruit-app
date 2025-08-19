@@ -9,20 +9,26 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body class="layout">
-  <aside class="sidebar">
+    <aside class="sidebar">
     <div class="brand">Hire cRaft</div>
     <nav>
       <a href="/" class="nav-item">ホーム</a>
+      <a href="/dashboard-2" class="nav-item">ダッシュボード</a>
       <a href="/candidates" class="nav-item">求人/候補者</a>
       <a href="/interviews" class="nav-item">選考</a>
-      <a href="/auth/users" class="nav-item">ユーザー</a>
-      <a href="/auth/signup" class="nav-item">設定</a>
+  <a href="/org/settings" class="nav-item">設定</a>
     </nav>
   </aside>
   <div class="content">
     <header class="topbar">
       <div class="breadcrumbs">{% block breadcrumbs %}採用レポート / <strong>全体</strong>{% endblock %}</div>
       <div class="actions">
+        {# Processing status shown when view provides processing_status in context #}
+        {% if processing_status is defined and processing_status %}
+          <div class="processing-status {{ processing_status|lower }}">
+            {{ processing_status }}
+          </div>
+        {% endif %}
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             <ul class="flash">
@@ -38,5 +44,50 @@
       {% block content %}{% endblock %}
     </main>
   </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      // transcript toggle
+      var tbtn = document.getElementById('transcript-toggle-btn');
+      var cbtn = document.getElementById('transcript-copy-btn');
+      var tbody = document.getElementById('transcript-body');
+      if(tbtn && tbody){
+        tbtn.addEventListener('click', function(){
+          if(tbody.classList.contains('collapsed')){
+            tbody.classList.remove('collapsed');
+            tbody.style.maxHeight = 'none';
+            tbtn.textContent = '折りたたむ';
+          } else {
+            tbody.classList.add('collapsed');
+            tbody.style.maxHeight = '160px';
+            tbtn.textContent = '全文を表示';
+          }
+        });
+        // initialize collapsed
+        tbody.classList.add('collapsed');
+        tbody.style.maxHeight = '160px';
+        tbody.style.overflow = 'auto';
+      }
+      if(cbtn && tbody){
+        cbtn.addEventListener('click', function(){
+          var text = tbody.textContent || '';
+          if(navigator.clipboard && navigator.clipboard.writeText){
+            navigator.clipboard.writeText(text).then(function(){
+              cbtn.textContent = 'コピーしました';
+              setTimeout(function(){ cbtn.textContent = '全文コピー'; }, 2000);
+            });
+          } else {
+            // fallback
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); cbtn.textContent = 'コピーしました'; } catch(e){}
+            document.body.removeChild(ta);
+            setTimeout(function(){ cbtn.textContent = '全文コピー'; }, 2000);
+          }
+        });
+      }
+    });
+  </script>
 </body>
 </html>

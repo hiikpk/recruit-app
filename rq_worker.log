@@ -1,0 +1,38 @@
+RQ worker starting (pid 84837 )
+22:50:42 Registering birth of worker 91c6c79690e14682b636274b0ee0159e
+22:50:42 Worker rq:worker:91c6c79690e14682b636274b0ee0159e started with PID 84837, version 1.16.2
+22:50:42 Subscribing to channel rq:pubsub:91c6c79690e14682b636274b0ee0159e
+22:50:42 *** Listening on default...
+22:50:42 Trying to acquire locks for default
+22:50:42 Sent heartbeat to prevent worker timeout. Next one should arrive in 480 seconds.
+22:50:42 Cleaning registries for queue: default
+22:50:42 *** Listening on default...
+22:50:42 Sent heartbeat to prevent worker timeout. Next one should arrive in 480 seconds.
+22:50:42 Dequeueing jobs on queues default and timeout 405
+22:51:32 Dequeued job 3a5a6b7d-8b55-4d1e-b7f9-6700cf80c297 from default
+22:51:32 default: app.jobs.evaluate.evaluate_interview(15) (3a5a6b7d-8b55-4d1e-b7f9-6700cf80c297)
+22:51:32 Sent heartbeat to prevent worker timeout. Next one should arrive in 480 seconds.
+22:51:32 Started Job Registry set.
+22:51:32 Preparing for execution of Job ID 3a5a6b7d-8b55-4d1e-b7f9-6700cf80c297
+22:51:32 Sent heartbeat to prevent worker timeout. Next one should arrive in 90 seconds.
+22:51:32 Job preparation finished.
+22:51:32 Performing Job...
+22:51:35 Finished performing Job ID 3a5a6b7d-8b55-4d1e-b7f9-6700cf80c297
+22:51:35 Handling successful execution of job 3a5a6b7d-8b55-4d1e-b7f9-6700cf80c297
+22:51:35 Saving job 3a5a6b7d-8b55-4d1e-b7f9-6700cf80c297's successful execution result
+22:51:35 Removing job 3a5a6b7d-8b55-4d1e-b7f9-6700cf80c297 from StartedJobRegistry
+22:51:35 Finished handling successful execution of job 3a5a6b7d-8b55-4d1e-b7f9-6700cf80c297
+22:51:35 default: Job OK (3a5a6b7d-8b55-4d1e-b7f9-6700cf80c297)
+22:51:35 Result: '41'
+22:51:35 Result is kept for 500 seconds
+22:51:35 Sent heartbeat to prevent worker timeout. Next one should arrive in 480 seconds.
+22:51:35 Sent heartbeat to prevent worker timeout. Next one should arrive in 480 seconds.
+22:51:35 *** Listening on default...
+22:51:35 Sent heartbeat to prevent worker timeout. Next one should arrive in 480 seconds.
+22:51:35 Dequeueing jobs on queues default and timeout 405
+22:58:20 Sent heartbeat to prevent worker timeout. Next one should arrive in 480 seconds.
+22:58:20 Dequeueing jobs on queues default and timeout 405
+23:05:05 Sent heartbeat to prevent worker timeout. Next one should arrive in 480 seconds.
+23:05:05 Trying to acquire locks for default
+23:05:05 Cleaning registries for queue: default
+23:05:05 Dequeueing jobs on queues default and timeout 405

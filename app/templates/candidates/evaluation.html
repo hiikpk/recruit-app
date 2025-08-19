@@ -1,0 +1,62 @@
+{% extends "layout.html" %}
+{% block title %}候補者評価{% endblock %}
+{% block content %}
+<section class="card">
+  <h3 class="card-title">候補者総合評価</h3>
+  {% if overall %}
+  <div class="grid2">
+    <div>
+      <canvas id="radarChart" width="400" height="400"></canvas>
+    </div>
+    <div>
+      <div class="kv">
+        <div><span>総合スコア</span><p>{{ ("%0.2f"%overall.overall_score) if overall.overall_score is not none else '-' }}</p></div>
+        <div><span>話し方</span><p>{{ ("%0.2f"%overall.speaking) if overall.speaking is not none else '-' }}</p></div>
+        <div><span>ロジカル</span><p>{{ ("%0.2f"%overall.logical) if overall.logical is not none else '-' }}</p></div>
+        <div><span>ボリューム</span><p>{{ ("%0.2f"%overall.volume) if overall.volume is not none else '-' }}</p></div>
+        <div><span>誠実性</span><p>{{ ("%0.2f"%overall.honesty) if overall.honesty is not none else '-' }}</p></div>
+        <div><span>主体性</span><p>{{ ("%0.2f"%overall.proactive) if overall.proactive is not none else '-' }}</p></div>
+        <div style="margin-top:8px"><strong>要約</strong><p>{{ overall.gpt_summary or '-' }}</p></div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <p>総合評価はまだありません</p>
+  {% endif %}
+</section>
+{% if overall %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  (function(){
+    const labels = ['話し方','ロジカル','ボリューム','誠実性','主体性'];
+    const data = [
+      {{ overall.speaking|tojson }},
+      {{ overall.logical|tojson }},
+      {{ overall.volume|tojson }},
+      {{ overall.honesty|tojson }},
+      {{ overall.proactive|tojson }},
+    ];
+    const ctx = document.getElementById('radarChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'radar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: '候補者スコア',
+          data: data,
+          fill: true,
+          backgroundColor: 'rgba(54, 162, 235, 0.2)',
+          borderColor: 'rgb(54, 162, 235)',
+          pointBackgroundColor: 'rgb(54, 162, 235)'
+        }]
+      },
+      options: {
+        scales: {
+          r: { suggestedMin: 0, suggestedMax: 5 }
+        }
+      }
+    });
+  })();
+</script>
+{% endif %}
+{% endblock %}
