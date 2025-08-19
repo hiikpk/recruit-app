@@ -8,3 +8,38 @@ admin.py
 manage.py
 scratch_import.py
 manual.txt
+
+# Virtual environment
+.venv/
+venv/
+env/
+ENV/
+
+# Python packaging / build
+dist/
+build/
+*.egg-info/
+pip-wheel-metadata/
+
+# Test / coverage
+.pytest_cache/
+.mypy_cache/
+.cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+wsgi.log
+rq_worker.log
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Backups and runtime DBs
+*.bak
+*.sqlite3
+*.sqlite

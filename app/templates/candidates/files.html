@@ -1,0 +1,26 @@
+{% extends 'layout.html' %}
+{% block content %}
+<div class="container">
+  <h3>ファイル一覧 - {{ c.name }}</h3>
+  <div style="margin-bottom:12px">
+    <a class="btn-ghost" href="{{ url_for('candidates.detail', candidate_id=c.id) }}">候補者詳細に戻る</a>
+  </div>
+  <table class="data">
+    <thead><tr><th>ID</th><th>ファイル名</th><th>種類</th><th>作成日</th><th>操作</th></tr></thead>
+    <tbody>
+      {% for f in files %}
+      <tr>
+        <td>{{ f.id }}</td>
+        <td>{{ f.filename or f.storage_url }}</td>
+        <td>{{ f.kind or '-' }}</td>
+        <td>{{ f.created_at.strftime('%Y/%m/%d %H:%M') if f.created_at else '-' }}</td>
+        <td>
+          <a class="link" href="{{ url_for('candidates.download_file', candidate_id=c.id, file_id=f.id) }}">ダウンロード</a>
+          <a class="link" href="{{ url_for('candidates.view_file', candidate_id=c.id, file_id=f.id) }}">プレビュー</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

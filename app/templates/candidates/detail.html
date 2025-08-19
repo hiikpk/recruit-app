@@ -10,7 +10,7 @@
   {% set status_label_map = {'applied':'新着応募','screening':'選考中','offer':'内定','hired':'入社','rejected':'不採用','withdrawn':'辞退'} %}
   <div class="candidate-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px">
     <div>
-  <h2 style="margin:0">{{ c.name }}</h2>
+  <h2 style="margin:0">{{ c.name }}  #{{ c.id}}</h2>
   <div style="color:#666; font-size:0.95rem">{{ c.name_yomi or '—' }}</div>
   <div style="color:#666; font-size:0.95rem">{{ c.applying_position or '—' }} / {{ c.nationality or '—' }}</div>
     </div>
@@ -42,51 +42,87 @@
   <form method="post">
     {{ form.csrf_token }}
     <input type="hidden" name="form_name" value="profile">
-    <div class="columns">
-      <section class="card">
-        <h3 class="card-title">基本情報</h3>
-        <div class="grid2">
-          <label class="label">氏名 {{ form.name(class_="input") }}</label>
-          <label class="label">氏名（ふりがな） {{ form.name_yomi(class_="input") }}</label>
-          <label class="label">Email {{ form.email(class_="input") }}</label>
-          <label class="label">電話番号 {{ form.phonenumber(class_="input") }}</label>
-          <label class="label">生年月日 {{ form.birthdate(class_="input") }}</label>
-          <label class="label">応募日 {{ form.applied_at(class_="input") }}</label>
-          <label class="label">選考ポジション {{ form.applying_position(class_="input") }}</label>
-          <label class="label">国籍 {{ form.nationality(class_="input") }}</label>
-        </div>
+  <div class="columns">
+        <!-- 左カラム: 基本情報 -->
+        <section class="card">
+          <h3 class="card-title">基本情報</h3>
+          <div class="grid2">
+            <label class="label">氏名 {{ form.name(class_="input") }}</label>
+            <label class="label">氏名（ふりがな） {{ form.name_yomi(class_="input") }}</label>
+            <label class="label">Email {{ form.email(class_="input") }}</label>
+            <label class="label">電話番号 {{ form.phonenumber(class_="input") }}</label>
+            <label class="label">生年月日 {{ form.birthdate(class_="input") }}</label>
+            <label class="label">応募日 {{ form.applied_at(class_="input") }}</label>
+            <label class="label">選考ポジション {{ form.applying_position(class_="input") }}</label>
+            <label class="label">国籍 {{ form.nationality(class_="input") }}</label>
+          </div>
+          <div class="grid2" style="margin-top:10px">
+            <label class="label">流入元 {{ form.channel(class_="input") }}</label>
+            <label class="label">流入元詳細 {{ form.channel_detail(class_="input") }}</label>
+            <label class="label">オファー日 {{ form.offer_date(class_="input") if form.offer_date is defined else '' }}</label>
+            <label class="label">内定承諾日 {{ form.acceptance_date(class_="input") if form.acceptance_date is defined else '' }}</label>
+            <label class="label">入社日 {{ form.join_date(class_="input") if form.join_date is defined else '' }}</label>
+            <label class="label">辞退日 {{ form.decline_date(class_="input") if form.decline_date is defined else '' }}</label>
+          </div>
+          <div class="form-actions" style="margin-top:12px">
+            <button class="btn-primary" type="submit">保存</button>
+            <a class="btn-ghost" href="/candidates">一覧に戻る</a>
+          </div>
+        </section>
 
-        <div class="grid2" style="margin-top:10px">
-          <label class="label">流入元 {{ form.channel(class_="input") }}</label>
-          <label class="label">流入元詳細 {{ form.channel_detail(class_="input") }}</label>
-          <label class="label">オファー日 {{ form.offer_date(class_="input") if form.offer_date is defined else '' }}</label>
-          <label class="label">内定承諾日 {{ form.acceptance_date(class_="input") if form.acceptance_date is defined else '' }}</label>
-          <label class="label">入社日 {{ form.join_date(class_="input") if form.join_date is defined else '' }}</label>
-          <label class="label">辞退日 {{ form.decline_date(class_="input") if form.decline_date is defined else '' }}</label>
-        </div>
+        <!-- 中央カラム: スキル・経歴 -->
+        <section class="card">
+          <h3 class="card-title">スキル・経歴</h3>
+          <div class="grid1" style="margin-top:10px">
+          <!-- <div class="grid2"> -->
+            <label class="label">学校 {{ form.school(class_="input") }}</label>
+            <label class="label">卒年 {{ form.grad_year(class_="input") }}</label>
+            <label class="label">現職 {{ form.current_job(class_="input") }}</label>
+            <!-- <label class="label">履歴書</label> -->
+          <!-- </div> -->
+          <!-- <div class="grid1" style="margin-top:10px"> -->
+            <label class="label">資格 {{ form.qualifications(class_="textarea", placeholder="例）基本情報技術者、TOEIC 800 など") }}</label>
+            <label class="label">スキルセット {{ form.skills(class_="textarea", placeholder="例）Python, Flask, SQL, React") }}</label>
+            <label class="label">語学 {{ form.languages(class_="textarea", placeholder="例）日本語（N1）, 英語（ビジネス）") }}</label>
+          </div>
+        </section>
 
-        <div class="form-actions" style="margin-top:12px">
-          <button class="btn-primary" type="submit">保存</button>
-          <a class="btn-ghost" href="/candidates">一覧に戻る</a>
-        </div>
-      </section>
+        <!-- 右カラム: ファイル表示（アップロード UI は視覚的にここに置くが実際の form は外部） -->
+        <section class="card">
+          <h3 class="card-title">履歴書等</h3>
+          <div>
+            {% if c.resume_file_id and c.resume_file %}
+              <!-- <div>履歴書: <a class="link" href="{{ c.resume_file.storage_url }}" target="_blank">{{ c.resume_file.file_metadata.filename if c.resume_file.file_metadata and c.resume_file.file_metadata.filename else 'ダウンロード' }}</a></div> -->
+            {% else %}
+              <div>履歴書は未登録です</div>
+            {% endif %}
+            <div style="margin-top:8px; display:flex; gap:8px; align-items:center">
+              <input type="file" name="resume" form="uploadForm" multiple>
+              <button class="btn-primary" type="submit" form="uploadForm">アップロード</button>
+            </div>
 
-      <section class="card">
-        <h3 class="card-title">スキル・経歴</h3>
-        <div class="grid2">
-          <label class="label">学校 {{ form.school(class_="input") }}</label>
-          <label class="label">卒年 {{ form.grad_year(class_="input") }}</label>
-          <label class="label">現職 {{ form.current_job(class_="input") }}</label>
-          <label class="label">履歴書（未実装）</label>
-        </div>
-        <div class="grid1" style="margin-top:10px">
-          <label class="label">資格 {{ form.qualifications(class_="textarea", placeholder="例）基本情報技術者、TOEIC 800 など") }}</label>
-          <label class="label">スキルセット {{ form.skills(class_="textarea", placeholder="例）Python, Flask, SQL, React") }}</label>
-          <label class="label">語学 {{ form.languages(class_="textarea", placeholder="例）日本語（N1）, 英語（ビジネス）") }}</label>
-        </div>
-      </section>
-    </div>
-  </form>
+            {% if files and files|length > 0 %}
+              <div style="margin-top:12px">
+                <h4>ファイル一覧</h4>
+                <ul>
+                {% for f in files %}
+                  <li>
+                    {% set view_url = url_for('candidates.view_file', candidate_id=c.id, file_id=f.id) %}
+                    {% set dl_url = url_for('candidates.download_file', candidate_id=c.id, file_id=f.id) %}
+                    <a class="link" href="#" onclick="window.open('{{ view_url|e }}', '_blank'); return false;">{{ (f.file_metadata.filename if f.file_metadata and f.file_metadata.filename else ('file_' ~ f.id)) }}</a>
+                    &nbsp;(<a href="{{ dl_url|e }}">ダウンロード</a>)
+                  </li>
+                {% endfor %}
+                </ul>
+              </div>
+            {% endif %}
+          </div>
+        </section>
+      </div>
+    </form>
+
+  <!-- hidden external upload form (submit target for visible controls) -->
+  <form id="uploadForm" method="post" action="{{ url_for('candidates.upload_resume', candidate_id=c.id) }}" enctype="multipart/form-data" style="display:none"></form>
 
   <!-- 選考情報 -->
   <section class="card">

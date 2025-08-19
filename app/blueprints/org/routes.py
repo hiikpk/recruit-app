@@ -208,3 +208,36 @@ def import_template():
     bio = BytesIO(data)
     bio.seek(0)
     return send_file(bio, as_attachment=True, download_name='candidates_import_template.csv', mimetype='text/csv')
+
+
+@bp.route('/users', methods=['GET','POST'])
+@login_required
+@admin_required
+def org_users():
+    """Manage users for the org. Also allows editing per-user timezone offset."""
+    org_id = current_user.org_id
+    if request.method == 'POST':
+        # Expect form fields like tz_<user_id> = offset or empty to clear
+        try:
+            for u in User.query.filter_by(org_id=org_id).all():
+                key = f'tz_{u.id}'
+                if key in request.form:
+                    val = request.form.get(key)
+                    if val == '' or val is None:
+                        u.tz_offset_minutes = None
+                    else:
+                        try:
+                            u.tz_offset_minutes = int(val)
+                        except Exception:
+                            u.tz_offset_minutes = None
+                    # persist
+                    db.session.add(u)
+            db.session.commit()
+            flash('ユーザー設定を保存しました', 'success')
+            return redirect(url_for('.org_users'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'保存に失敗しました: {e}', 'danger')
+
+    users = User.query.filter_by(org_id=org_id).order_by(User.email.asc()).all()
+    return render_template('org/users.html', users=users)

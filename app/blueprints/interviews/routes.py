@@ -5,6 +5,7 @@ from .forms import InterviewForm
 from ...extensions import db, rq
 from ...models.interview import Interview
 from ...models.recording import Recording
+from ...models.transcript import Transcript
 from ...models.candidate import Candidate
 from ...models.evaluation import Evaluation
 from ...services.ics import build_ics
@@ -12,18 +13,81 @@ from ...services.storage import save_file
 from ...jobs.transcribe import transcribe_recording
 from io import BytesIO
 from uuid import uuid4
-from datetime import timedelta
+from datetime import timedelta, date, datetime, time
+from sqlalchemy import func
+from urllib.parse import urlencode
 
 @bp.get("")
 @login_required
 def list_interviews():
-    query = Interview.query.filter_by(org_id=current_user.org_id).order_by(Interview.scheduled_at.desc())
-    # 直近順
-    items = query.all()
-    # Candidate をまとめて取得（テンプレートで表示）
-    cand_ids = list({i.candidate_id for i in items or []}) if items else []
+    # Parse optional filters from query string
+    start = request.args.get('start')
+    end = request.args.get('end')
+    status = request.args.get('status')
+
+    # Today's interviews (separate card area).
+    # If client provides tz offset (minutes, via ?tz=...), compute user's local "today" and convert to UTC window.
+    tz = request.args.get('tz', type=int)
+    # If tz provided by client, persist it to the user's settings for future requests.
+    if tz is not None:
+        try:
+            current_user.tz_offset_minutes = tz
+            db.session.add(current_user)
+            db.session.commit()
+        except Exception:
+            # on failure, continue without blocking the listing
+            db.session.rollback()
+    else:
+        # if not provided, but user has a saved tz, use that
+        try:
+            if getattr(current_user, 'tz_offset_minutes', None) is not None:
+                tz = int(current_user.tz_offset_minutes)
+        except Exception:
+            tz = None
+    todays = []
+    if tz is not None:
+        # tz = minutes difference (UTC - local) from JS getTimezoneOffset()
+        # compute user's local date now, then compute UTC window for that local date
+        now_utc = datetime.utcnow()
+        user_local_date = (now_utc - timedelta(minutes=tz)).date()
+        local_start = datetime.combine(user_local_date, time.min)
+        utc_start = local_start + timedelta(minutes=tz)
+        utc_end = utc_start + timedelta(days=1)
+        todays = Interview.query.filter_by(org_id=current_user.org_id).filter(Interview.scheduled_at >= utc_start, Interview.scheduled_at < utc_end).order_by(Interview.scheduled_at.asc()).all()
+    else:
+        # fallback: use server local date
+        today = date.today().isoformat()
+        todays = Interview.query.filter_by(org_id=current_user.org_id).filter(func.date(Interview.scheduled_at) == today).order_by(Interview.scheduled_at.asc()).all()
+
+    # Main list query (apply filters). Exclude today's interviews from the table.
+    query = Interview.query.filter_by(org_id=current_user.org_id)
+    if start:
+        query = query.filter(func.date(Interview.scheduled_at) >= start)
+    if end:
+        query = query.filter(func.date(Interview.scheduled_at) <= end)
+    if status:
+        query = query.filter(Interview.status == status)
+    if todays:
+        today_ids = [i.id for i in todays]
+        query = query.filter(~Interview.id.in_(today_ids))
+    # order by scheduled time ascending (実施日順) with pagination
+    page = request.args.get('page', default=1, type=int)
+    per_page = request.args.get('per_page', default=20, type=int)
+    items_pagination = query.order_by(Interview.scheduled_at.asc()).paginate(page=page, per_page=per_page, error_out=False)
+    items = items_pagination.items
+
+    # helper to build page URLs while preserving existing query params
+    def make_page_url(target_page: int):
+        params = request.args.to_dict()
+        params['page'] = target_page
+        params['per_page'] = items_pagination.per_page
+        return request.path + '?' + urlencode(params)
+
+    # Candidate map for both lists
+    cand_ids = list({i.candidate_id for i in (items or []) + (todays or [])}) if (items or todays) else []
     cand_map = {c.id: c for c in Candidate.query.filter(Candidate.id.in_(cand_ids)).all()} if cand_ids else {}
-    return render_template("interviews/list.html", items=items, cand_map=cand_map)
+
+    return render_template("interviews/list.html", items=items, cand_map=cand_map, todays=todays, filters={'start': start, 'end': end, 'status': status}, pagination=items_pagination, make_page_url=make_page_url)
 
 @bp.route("/create", methods=["GET","POST"])
 @login_required
@@ -119,6 +183,14 @@ def detail(interview_id):
         )
         res = db.session.execute(q, {"int_id": i.id}).fetchone()
         metrics = res[0] if res and len(res) > 0 else None
+        # Normalize metrics: sometimes stored as JSON string in DB
+        try:
+            import json
+            if isinstance(metrics, str):
+                metrics = json.loads(metrics)
+        except Exception:
+            # if parsing fails, drop metrics to avoid template errors
+            metrics = None
     except Exception:
         metrics = None
 
@@ -150,7 +222,36 @@ def detail(interview_id):
     except Exception:
         transcript_text = None
 
-    return render_template("interviews/detail.html", interview=i, form=form, evaluations=evaluations, metrics=metrics, transcript_text=transcript_text)
+    # Determine processing status for UI badge
+    processing_status = None
+    try:
+        # latest recording for this interview
+        latest_rec = Recording.query.filter_by(org_id=current_user.org_id, interview_id=i.id).order_by(Recording.id.desc()).first()
+        if latest_rec:
+            # check latest transcript for that recording and inspect status
+            tr = Transcript.query.filter_by(org_id=current_user.org_id, recording_id=latest_rec.id).order_by(Transcript.created_at.desc()).first()
+            if tr:
+                if getattr(tr, 'status', None) == 'ok':
+                    processing_status = '完了'
+                elif getattr(tr, 'status', None) == 'processing':
+                    processing_status = '処理中'
+                elif getattr(tr, 'status', None) == 'error':
+                    processing_status = '失敗'
+                else:
+                    processing_status = '処理中'
+            else:
+                processing_status = '処理中'
+        else:
+            processing_status = None
+    except Exception:
+        processing_status = None
+
+    try:
+        current_app.logger.debug('Render interviews.detail: metrics type=%s value=%s', type(metrics), str(metrics)[:1000])
+    except Exception:
+        pass
+    return render_template("interviews/detail.html", interview=i, form=form, evaluations=evaluations, metrics=metrics, transcript_text=transcript_text, processing_status=processing_status)
+
 
 @bp.get("/<int:interview_id>/ics")
 @login_required

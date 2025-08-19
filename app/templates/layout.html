@@ -9,10 +9,11 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body class="layout">
-  <aside class="sidebar">
+    <aside class="sidebar">
     <div class="brand">Hire cRaft</div>
     <nav>
       <a href="/" class="nav-item">ホーム</a>
+      <a href="/dashboard-2" class="nav-item">ダッシュボード</a>
       <a href="/candidates" class="nav-item">求人/候補者</a>
       <a href="/interviews" class="nav-item">選考</a>
   <a href="/org/settings" class="nav-item">設定</a>
@@ -22,6 +23,12 @@
     <header class="topbar">
       <div class="breadcrumbs">{% block breadcrumbs %}採用レポート / <strong>全体</strong>{% endblock %}</div>
       <div class="actions">
+        {# Processing status shown when view provides processing_status in context #}
+        {% if processing_status is defined and processing_status %}
+          <div class="processing-status {{ processing_status|lower }}">
+            {{ processing_status }}
+          </div>
+        {% endif %}
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             <ul class="flash">

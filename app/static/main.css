@@ -98,3 +98,9 @@ th,td{border:1px solid #ddd;padding:8px}
 .list{margin:0;padding-left:18px}
 .list li{margin-bottom:6px}
 .muted{color:#6b7b93}
+
+/* Processing status badge in topbar */
+.processing-status{display:inline-block;padding:6px 10px;border-radius:12px;font-weight:600;margin-right:12px}
+.processing-status.処理中{background:#fff3cd;color:#8a6d00;border:1px solid #ffeeba}
+.processing-status.完了{background:#e8f5e9;color:#2e7d32;border:1px solid #c8e6c9}
+.processing-status.失敗{background:#ffebee;color:#c62828;border:1px solid #ffcdd2}

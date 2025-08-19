@@ -55,7 +55,7 @@
         </a>
       </div>
     </div>
-    <!-- <div class="col-md-4 col-sm-6 mb-3">
+    <div class="col-md-4 col-sm-6 mb-3">
       <div class="card h-100">
         <a href="/org/users" class="d-block h-100 text-decoration-none text-body">
           <div class="card-body">
@@ -64,7 +64,22 @@
           </div>
         </a>
       </div>
-    </div> -->
+    </div>
+    <div class="col-md-4 col-sm-6 mb-3">
+      <div class="card h-100">
+        <form method="post" action="{{ url_for('auth.logout') }}" style="height:100%; margin:0">
+          <div class="card-body" style="display:flex; flex-direction:column; justify-content:space-between; height:100%">
+            <div>
+              <h5 class="card-title">ログアウト</h5>
+              <p class="card-text">現在のセッションを終了します。</p>
+            </div>
+            <div>
+              <button class="btn btn-outline-danger" type="submit">ログアウト</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 
 </div>

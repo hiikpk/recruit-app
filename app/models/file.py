@@ -12,3 +12,12 @@ class Files(db.Model, OrgScopedMixin, TimestampMixin):
     storage_url = db.Column(db.String(255), nullable=True)
     file_metadata = db.Column(db.JSON)  # {"filename": "example.pdf", "size": 123456, "content_type": "application/pdf"}
     created_at = db.Column(db.DateTime, server_default=db.func.now(), nullable=False)
+    # optional link to candidate
+    candidate_id = db.Column(db.Integer, db.ForeignKey('candidates.id'), nullable=True)
+
+    @property
+    def filename(self):
+        try:
+            return self.file_metadata.get('filename') if self.file_metadata else None
+        except Exception:
+            return None

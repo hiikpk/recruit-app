@@ -20,6 +20,10 @@ class Candidate(db.Model, OrgScopedMixin, TimestampMixin):
     grad_year = db.Column(db.Integer)
     current_job = db.Column(db.Text)
     resume_file_id = db.Column(db.Integer, db.ForeignKey("files.id"))  # 任意
+    # relationship to Files table for resume/storage
+    resume_file = db.relationship('Files', foreign_keys=[resume_file_id], uselist=False)
+    # allow multiple files attached to candidate (use Files.candidate_id as foreign key)
+    files = db.relationship('Files', backref='candidate', lazy='dynamic', foreign_keys='Files.candidate_id')
     qualifications = db.Column(db.JSON)  # ["基本情報","TOEIC800"]
     languages = db.Column(db.JSON)       # [{"lang":"EN","level":"B2"}]
     skills = db.Column(db.JSON)          # ["Python","Flask","SQL"]

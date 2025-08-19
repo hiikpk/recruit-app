@@ -1,0 +1,30 @@
+{% extends 'layout.html' %}
+{% block content %}
+<div class="container">
+  <h2>ユーザー設定</h2>
+  <p>各ユーザーのタイムゾーン（JSのgetTimezoneOffset値：分）を手動で設定できます。空欄にすると保存済み設定をクリアします。</p>
+  <form method="post">
+    <table class="data">
+      <thead>
+        <tr><th>メール</th><th>ロール</th><th>タイムゾーンオフセット (分)</th></tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>{{ u.email }}</td>
+          <td>{{ u.role }}</td>
+          <td>
+            <input type="text" name="tz_{{ u.id }}" value="{{ u.tz_offset_minutes if u.tz_offset_minutes is not none else '' }}" style="width:120px">
+            <div style="font-size:90%; color:#666">例: 540 は UTC+9（日本）</div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div style="margin-top:12px">
+      <button class="btn-primary" type="submit">保存</button>
+      <a class="btn btn-secondary" href="{{ url_for('org.org_settings') }}">一覧に戻る</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

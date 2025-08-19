@@ -19,6 +19,23 @@ class Config:
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
     UID_DOMAIN = os.getenv("UID_DOMAIN", "example.local")
+    # Deepgram options can be toggled via environment JSON string, e.g.
+    # DEEPGRAM_OPTIONS='{"diarize": true, "utterances": true, "multichannel": true, "utt_split": 0.3}'
+    try:
+        import json
+        _dg_opts = os.getenv('DEEPGRAM_OPTIONS', '')
+        if _dg_opts:
+            DEEPGRAM_OPTIONS = json.loads(_dg_opts)
+        else:
+            # sensible defaults: enable diarization and utterances for better speaker separation
+            DEEPGRAM_OPTIONS = {
+                'diarize': True,
+                'utterances': True,
+                'multichannel': False,
+                'utt_split': 0.3
+            }
+    except Exception:
+        DEEPGRAM_OPTIONS = {}
     # speaking heuristic and evaluation weights
     HEURISTIC_WEIGHT_AI = float(os.getenv('HEURISTIC_WEIGHT_AI', '0.6'))
     HEURISTIC_WEIGHT_H = float(os.getenv('HEURISTIC_WEIGHT_H', '0.4'))

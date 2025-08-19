@@ -99,31 +99,33 @@ def _run_transcribe(recording_id: int, lang: str = "ja"):
                 words = raw.get('results', {}).get('channels', [])[0].get('alternatives', [])[0].get('words')
                 if words:
                     utterances = []
-                    # group contiguous words by speaker and small gaps into utterances
                     current = None
                     GAP_THRESH = current_app.config.get('DG_WORD_GAP_THRESHOLD', 0.35)
                     for w in words:
-                        spk = w.get('speaker') if w.get('speaker') is not None else 0
+                        spk = w.get('speaker') if w.get('speaker') is not None else None
                         start = w.get('start')
                         end = w.get('end')
                         text = w.get('punctuated_word') or w.get('word') or ''
                         if current is None:
                             current = {'speaker': spk, 'start': start, 'end': end, 'text': text}
                         else:
-                            # if speaker changed or gap is large, finalize current
-                            gap = start - current['end'] if start and current.get('end') else 0
-                            if spk != current['speaker'] or (gap is not None and gap > GAP_THRESH):
+                            # if speaker changed (labels present) or gap is large, finalize current
+                            gap = (start - current['end']) if (start is not None and current.get('end') is not None) else None
+                            speaker_changed = (spk is not None and current.get('speaker') is not None and spk != current.get('speaker'))
+                            if speaker_changed or (gap is not None and gap > GAP_THRESH):
                                 utterances.append(current)
                                 current = {'speaker': spk, 'start': start, 'end': end, 'text': text}
                             else:
                                 # extend current utterance
-                                current['end'] = end
-                                if current['text']:
+                                current['end'] = end or current.get('end')
+                                if current.get('text'):
                                     current['text'] += ' ' + text
                                 else:
                                     current['text'] = text
                     if current:
                         utterances.append(current)
+                else:
+                    utterances = None
             except Exception:
                 utterances = None
     except Exception:
@@ -137,7 +139,7 @@ def _run_transcribe(recording_id: int, lang: str = "ja"):
     if utterances:
         # apply post-processing heuristics to improve merging/backchannels/switchbacks
         try:
-            proc_utterances = process_utterances(utterances)
+            proc_utterances = process_utterances(utterances, lang=lang)
         except Exception:
             proc_utterances = utterances
 
@@ -197,14 +199,18 @@ def _run_transcribe(recording_id: int, lang: str = "ja"):
             tr.metrics = metrics
         except Exception:
             tr.metrics = None
-        except Exception:
-            tr.metrics = None
     else:
         tr.utterances = None
         tr.metrics = None
     # Format a readable transcript for UI: prefer utterances when available
     try:
-        formatted = _format_transcript_text(text, utterances=utterances, lang=lang)
+        # Prefer the post-processed utterances when building the human-readable text.
+        used_utterances = None
+        if 'proc_utterances' in locals() and proc_utterances:
+            used_utterances = proc_utterances
+        elif utterances:
+            used_utterances = utterances
+        formatted = _format_transcript_text(text, utterances=used_utterances, lang=lang)
         tr.text = formatted or (text or '')
     except Exception:
         # fallback to raw text

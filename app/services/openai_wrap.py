@@ -69,9 +69,28 @@ def deepgram_raw_transcribe(audio_bytes: bytes, language: str = "ja", filename: 
         return {}
 
     try:
-        url = 'https://api.deepgram.com/v1/listen?punctuate=true&diarize=true'
+        # build query from config options for flexibility
+        opts = current_app.config.get('DEEPGRAM_OPTIONS', {}) or {}
+        params = []
+        # default: request punctuation
+        if opts.get('punctuate', True):
+            params.append('punctuate=true')
+        # diarization / utterances / multichannel
+        if opts.get('diarize') or opts.get('diarization'):
+            params.append('diarize=true')
+        if opts.get('utterances'):
+            params.append('utterances=true')
+        if opts.get('multichannel'):
+            params.append('multichannel=true')
+        # utt_split is sometimes supported as a float threshold
+        if 'utt_split' in opts:
+            try:
+                params.append(f"utt_split={float(opts.get('utt_split'))}")
+            except Exception:
+                pass
         if language:
-            url += f"&language={language}"
+            params.append(f"language={language}")
+        url = 'https://api.deepgram.com/v1/listen' + ('?' + '&'.join(params) if params else '')
 
         content_type = 'audio/wav'
         if filename:

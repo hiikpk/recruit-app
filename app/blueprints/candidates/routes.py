@@ -9,6 +9,14 @@ from ...models.application import Application
 from ...models.interview import Interview
 from ...models.candidate_overall_evaluation import CandidateOverallEvaluation
 from datetime import datetime
+from ...models.file import Files
+from ...services.storage import save_file
+from ...services.storage import download_bytes
+from ...services.preview import render_preview
+from flask import send_file
+import io
+import mimetypes
+from urllib.parse import urlencode
 
 @bp.get("")
 @login_required
@@ -39,8 +47,19 @@ def list_candidates():
         like = f"%{nationality}%"
         query = query.filter(Candidate.nationality.ilike(like))
 
-    items = query.order_by(Candidate.id.desc()).all()
-    return render_template("candidates/list.html", items=items)
+    # pagination
+    page = request.args.get('page', default=1, type=int)
+    per_page = request.args.get('per_page', default=20, type=int)
+    items_pagination = query.order_by(Candidate.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    # new applications cards (latest applied)
+    new_apps = Candidate.query.filter_by(org_id=current_user.org_id, status='applied').order_by(Candidate.applied_at.desc()).limit(5).all()
+    def make_page_url(target_page: int):
+        params = request.args.to_dict()
+        params['page'] = target_page
+        params['per_page'] = items_pagination.per_page
+        return request.path + '?' + urlencode(params)
+
+    return render_template("candidates/list.html", items=items_pagination.items, pagination=items_pagination, new_apps=new_apps, make_page_url=make_page_url)
 
 @bp.route("/create", methods=["GET", "POST"])
 @login_required
@@ -125,11 +144,83 @@ def detail(candidate_id):
     # latest overall evaluation for this candidate (if any)
     overall = CandidateOverallEvaluation.query.filter_by(candidate_id=c.id, org_id=c.org_id).order_by(CandidateOverallEvaluation.created_at.desc()).first()
 
+    # files for this candidate
+    files = Files.query.filter_by(candidate_id=c.id).order_by(Files.created_at.desc()).all()
+
     return render_template("candidates/detail.html",
                            c=c, app_row=app_row, form=form,
                            stage_form=stage_form,
                            interviews=interviews, evaluations=evaluations,
-                           apps=apps, overall=overall)
+                           apps=apps, overall=overall, files=files)
+
+
+@bp.post('/<int:candidate_id>/upload_resume')
+@login_required
+def upload_resume(candidate_id):
+    c = Candidate.query.filter_by(id=candidate_id, org_id=current_user.org_id).first_or_404()
+    files = request.files.getlist('resume')
+    if not files:
+        flash('ファイルが選択されていません', 'warning')
+        return redirect(url_for('candidates.detail', candidate_id=c.id))
+
+    created_ids = []
+    for f in files:
+        if not f or getattr(f, 'filename', '') == '':
+            continue
+        url = save_file(f, prefix=f"org{current_user.org_id}/candidate{c.id}")
+        meta = {'filename': getattr(f, 'filename', ''), 'size': None, 'content_type': getattr(f, 'mimetype', '')}
+        file_row = Files(org_id=current_user.org_id, kind='resume', storage_url=url, file_metadata=meta, candidate_id=c.id)
+        db.session.add(file_row)
+        db.session.flush()
+        created_ids.append(file_row.id)
+
+    db.session.commit()
+
+    # If candidate has no resume_file_id set, set it to the first uploaded file
+    if created_ids and not c.resume_file_id:
+        c.resume_file_id = created_ids[0]
+        db.session.add(c)
+        db.session.commit()
+
+    flash('履歴書をアップロードしました', 'success')
+    return redirect(url_for('candidates.detail', candidate_id=c.id))
+
+
+@bp.get('/<int:candidate_id>/files')
+@login_required
+def list_files(candidate_id):
+    c = Candidate.query.filter_by(id=candidate_id, org_id=current_user.org_id).first_or_404()
+    files = Files.query.filter_by(candidate_id=c.id).order_by(Files.created_at.desc()).all()
+    return render_template('candidates/files.html', c=c, files=files)
+
+
+@bp.get('/<int:candidate_id>/files/<int:file_id>/download')
+@login_required
+def download_file(candidate_id, file_id):
+    f = Files.query.filter_by(id=file_id, candidate_id=candidate_id, org_id=current_user.org_id).first_or_404()
+    data = download_bytes(f.storage_url)
+    filename = f.filename or f"file_{f.id}"
+    return send_file(io.BytesIO(data), as_attachment=True, download_name=filename, mimetype=f.file_metadata.get('content_type') if f.file_metadata else 'application/octet-stream')
+
+
+@bp.get('/<int:candidate_id>/files/<int:file_id>/view')
+@login_required
+def view_file(candidate_id, file_id):
+    f = Files.query.filter_by(id=file_id, candidate_id=candidate_id, org_id=current_user.org_id).first_or_404()
+    # try preview extraction for office files
+    try:
+        preview = render_preview(f)
+        if preview:
+            mimetype, data_bytes, filename = preview
+            return send_file(io.BytesIO(data_bytes), as_attachment=False, download_name=filename, mimetype=mimetype)
+    except Exception:
+        # fall back to raw bytes
+        pass
+
+    # default: return raw bytes (PDF/text/etc.)
+    data = download_bytes(f.storage_url)
+    mimetype = f.file_metadata.get('content_type') if f.file_metadata else mimetypes.guess_type(f.filename or '')[0] or 'application/octet-stream'
+    return send_file(io.BytesIO(data), as_attachment=False, download_name=f.filename or f"file_{f.id}", mimetype=mimetype)
 
 
 @bp.get('/<int:candidate_id>/evaluation')
