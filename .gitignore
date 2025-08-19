@@ -43,3 +43,6 @@ Thumbs.db
 *.bak
 *.sqlite3
 *.sqlite
+
+docs/*.pptx
+docs/*.py
