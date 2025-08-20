@@ -3,6 +3,7 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 import os, sys, pathlib
+import sqlalchemy as sa
 
 os.environ["SKIP_CREATE_ALL"] = "1"
 
@@ -40,8 +41,17 @@ with app.app_context():
     target_metadata = db.metadata
 
 def run_migrations_offline():
-    context.configure(url=url, target_metadata=target_metadata,
-                      literal_binds=True, compare_type=True, render_as_batch=True)
+    context.configure(
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        compare_type=True,
+        render_as_batch=True,
+        # Use a longer version table/column so long revision IDs fit
+        version_table="alembic_version_long",
+        version_table_pk_column="version_num",
+        version_table_pk_type=sa.String(255),
+    )
     with context.begin_transaction():
         context.run_migrations()
 
@@ -49,8 +59,16 @@ def run_migrations_online():
     connectable = engine_from_config({"sqlalchemy.url": url},
                                      prefix="sqlalchemy.", poolclass=pool.NullPool)
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata,
-                          compare_type=True, render_as_batch=True)
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            compare_type=True,
+            render_as_batch=True,
+            # Use a longer version table/column so long revision IDs fit
+            version_table="alembic_version_long",
+            version_table_pk_column="version_num",
+            version_table_pk_type=sa.String(255),
+        )
         with context.begin_transaction():
             context.run_migrations()
 
