@@ -13,6 +13,7 @@ from ...services.storage import save_file
 from ...services.storage import download_bytes
 from ...services.preview import render_preview
 from flask import send_file
+from sqlalchemy.orm import defer
 import io
 import mimetypes
 from urllib.parse import urlencode
@@ -147,10 +148,21 @@ def detail(candidate_id):
         return redirect(url_for("candidates.detail", candidate_id=c.id))
 
 
-    interviews = []
+    interviews = (
+        Interview.query
+        .filter_by(org_id=c.org_id, candidate_id=c.id)
+        .options(defer(Interview.scheduled_at))
+        .order_by(Interview.created_at.desc())
+        .all()
+    )
+    # scheduled_at はDBに存在しないため、テンプレート互換用に created_at を仮で入れる
+    for _iv in interviews:
+        try:
+            if getattr(_iv, 'scheduled_at', None) is None:
+                setattr(_iv, 'scheduled_at', _iv.created_at)
+        except Exception:
+            pass
     evaluations = []
-    # Fetch interviews for this candidate directly (no application linkage)
-    interviews = Interview.query.filter_by(org_id=c.org_id, candidate_id=c.id).order_by(Interview.scheduled_at.desc()).all()
     # Evaluations are per-interview; fetch all evaluations for interviews belonging to this candidate
     interview_ids = [i.id for i in interviews] if interviews else []
     evaluations = Evaluation.query.filter(Evaluation.interview_id.in_(interview_ids)).order_by(Evaluation.created_at.desc()).all() if interview_ids else []
