@@ -1,11 +1,10 @@
 from flask import render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from . import bp
-from .forms import CandidateForm, ApplicationStageForm
+from .forms import CandidateForm
 from ...extensions import db
 from ...models.candidate import Candidate
 from ...models.evaluation import Evaluation
-from ...models.application import Application
 from ...models.interview import Interview
 from ...models.candidate_overall_evaluation import CandidateOverallEvaluation
 from datetime import datetime
@@ -127,22 +126,11 @@ def create_candidate():
 @login_required
 def detail(candidate_id):
     c = Candidate.query.filter_by(id=candidate_id, org_id=current_user.org_id).first_or_404()
-    # application_idが指定されていればその応募を表示。なければ最新1件（MVP）。
-    app_id = request.args.get("application_id", type=int)
-    if app_id:
-        # 指定の応募が見つからない場合は最新の応募にフォールバック
-        app_row = Application.query.filter_by(id=app_id, org_id=c.org_id, candidate_id=c.id).first()
-        if not app_row:
-            app_row = Application.query.filter_by(org_id=c.org_id, candidate_id=c.id)\
-                                       .order_by(Application.id.desc()).first()
-    else:
-        app_row = Application.query.filter_by(org_id=c.org_id, candidate_id=c.id)\
-                                   .order_by(Application.id.desc()).first()
+    # applications テーブルは廃止。参照を停止する。
+    app_row = None
+    stage_form = None
 
     form = CandidateForm(obj=c)
-    stage_form = None
-    if app_row:
-        stage_form = ApplicationStageForm(stage=app_row.stage, status=app_row.status)
 
     if form.validate_on_submit() and request.form.get("form_name") == "profile":
         form.populate_obj(c)
@@ -158,18 +146,9 @@ def detail(candidate_id):
         flash("基本情報を更新しました", "success")
         return redirect(url_for("candidates.detail", candidate_id=c.id))
 
-    if stage_form and stage_form.validate_on_submit() and request.form.get("form_name") == "stage":
-        app_row.stage = stage_form.stage.data
-        app_row.status = stage_form.status.data
-        db.session.commit()
-        flash("選考ステータスを更新しました", "success")
-        return redirect(url_for("candidates.detail", candidate_id=c.id))
 
     interviews = []
     evaluations = []
-    # 全応募（ヘッダーの切り替え用）
-    apps = (Application.query.filter_by(org_id=c.org_id, candidate_id=c.id)
-            .order_by(Application.id.desc()).all())
     # Fetch interviews for this candidate directly (no application linkage)
     interviews = Interview.query.filter_by(org_id=c.org_id, candidate_id=c.id).order_by(Interview.scheduled_at.desc()).all()
     # Evaluations are per-interview; fetch all evaluations for interviews belonging to this candidate
@@ -186,7 +165,8 @@ def detail(candidate_id):
                            c=c, app_row=app_row, form=form,
                            stage_form=stage_form,
                            interviews=interviews, evaluations=evaluations,
-                           apps=apps, overall=overall, files=files)
+                           apps=[],
+                           overall=overall, files=files)
 
 
 @bp.post('/<int:candidate_id>/upload_resume')
