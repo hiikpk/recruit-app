@@ -13,25 +13,46 @@ branch_labels = None
 depends_on = None
 
 
+def has_table(insp, name: str) -> bool:
+    try:
+        return name in set(insp.get_table_names())
+    except Exception:
+        return False
+
+def has_column(insp, table: str, column: str) -> bool:
+    try:
+        return column in {c["name"] for c in insp.get_columns(table)}
+    except Exception:
+        return False
+
+
 def upgrade():
     bind = op.get_bind()
     insp = sa.inspect(bind)
-    if insp.has_table('transcripts'):
-        cols = [c['name'] for c in insp.get_columns('transcripts')]
-    else:
-        cols = []
-    if 'utterances' not in cols:
-        op.add_column('transcripts', sa.Column('utterances', sa.JSON(), nullable=True))
-    if 'metrics' not in cols:
-        op.add_column('transcripts', sa.Column('metrics', sa.JSON(), nullable=True))
+
+    if not has_table(insp, "transcripts"):
+        op.create_table(
+            "transcripts",
+            sa.Column("id", sa.Integer, primary_key=True),
+            sa.Column("created_at", sa.DateTime, server_default=sa.text("now()"), nullable=False),
+            sa.Column("updated_at", sa.DateTime, server_default=sa.text("now()"), nullable=False),
+        )
+        insp = sa.inspect(bind)
+
+    with op.batch_alter_table("transcripts") as b:
+        if not has_column(insp, "transcripts", "utterances"):
+            b.add_column(sa.Column("utterances", sa.JSON(), nullable=True))
+        if not has_column(insp, "transcripts", "metrics"):
+            b.add_column(sa.Column("metrics", sa.JSON(), nullable=True))
 
 
 def downgrade():
     bind = op.get_bind()
     insp = sa.inspect(bind)
-    if insp.has_table('transcripts'):
-        cols = [c['name'] for c in insp.get_columns('transcripts')]
-        if 'metrics' in cols:
-            op.drop_column('transcripts', 'metrics')
-        if 'utterances' in cols:
-            op.drop_column('transcripts', 'utterances')
+
+    if has_table(insp, "transcripts"):
+        with op.batch_alter_table("transcripts") as b:
+            if has_column(insp, "transcripts", "metrics"):
+                b.drop_column("metrics")
+            if has_column(insp, "transcripts", "utterances"):
+                b.drop_column("utterances")

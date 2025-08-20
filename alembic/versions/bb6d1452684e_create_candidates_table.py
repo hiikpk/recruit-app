@@ -38,6 +38,14 @@ def upgrade():
         # 後続の migration が alter/drop する対象があれば最低限の“叩き台”だけ用意
     )
 
+    # transcripts
+    op.create_table(
+        "transcripts",
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("created_at", sa.DateTime, server_default=sa.text("now()"), nullable=False),
+        sa.Column("updated_at", sa.DateTime, server_default=sa.text("now()"), nullable=False),
+    )
+
 def downgrade():
     op.drop_table("interviews")
     op.drop_table("candidates")
