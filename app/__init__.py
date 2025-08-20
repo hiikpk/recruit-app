@@ -1,9 +1,7 @@
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from .extensions import db, login_manager, rq
 
-db = SQLAlchemy()
 migrate = Migrate()  # 追加
 
 def create_app():
