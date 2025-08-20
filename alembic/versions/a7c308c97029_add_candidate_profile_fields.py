@@ -1,7 +1,7 @@
 """add candidate profile fields
 
 Revision ID: a7c308c97029
-Revises: 9376c3b92e7b
+Revises: bb6d1452684e
 Create Date: 2025-08-10
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'a7c308c97029'
-down_revision = '9376c3b92e7b'
+down_revision = 'bb6d1452684e'
 branch_labels = None
 depends_on = None
 
