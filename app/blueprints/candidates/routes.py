@@ -17,6 +17,35 @@ from flask import send_file
 import io
 import mimetypes
 from urllib.parse import urlencode
+import json
+
+
+# Helpers: coerce empty strings to None for integers and parse JSON-like inputs
+def _coerce_int(val):
+    if val is None or val == "":
+        return None
+    try:
+        return int(val)
+    except Exception:
+        return None
+
+
+def _coerce_json_field(val):
+    # Accept dict/list as-is, coerce empty string to None, try to parse JSON for strings
+    if val is None or val == "":
+        return None
+    if isinstance(val, (dict, list)):
+        return val
+    if isinstance(val, str):
+        s = val.strip()
+        if not s:
+            return None
+        try:
+            return json.loads(s)
+        except Exception:
+            return None
+    return None
+
 
 @bp.get("")
 @login_required
@@ -77,12 +106,12 @@ def create_candidate():
             birthdate=form.birthdate.data or None,
             memo=form.memo.data,
             school=form.school.data,
-            grad_year=form.grad_year.data,
+            grad_year=_coerce_int(form.grad_year.data),
             current_job=form.current_job.data,
-            resume_file_id=form.resume_file_id.data,
-            qualifications=form.qualifications.data,
-            skills=form.skills.data,
-            languages=form.languages.data,
+            resume_file_id=_coerce_int(form.resume_file_id.data),
+            qualifications=_coerce_json_field(form.qualifications.data),
+            skills=_coerce_json_field(form.skills.data),
+            languages=_coerce_json_field(form.languages.data),
             applied_at=form.applied_at.data or None,
             status=form.status.data or "applied",
             channel=form.channel.data,
@@ -117,6 +146,12 @@ def detail(candidate_id):
 
     if form.validate_on_submit() and request.form.get("form_name") == "profile":
         form.populate_obj(c)
+        # sanitize coerced attributes that may be empty strings from forms
+        c.grad_year = _coerce_int(c.grad_year)
+        c.resume_file_id = _coerce_int(c.resume_file_id)
+        c.qualifications = _coerce_json_field(c.qualifications)
+        c.languages = _coerce_json_field(c.languages)
+        c.skills = _coerce_json_field(c.skills)
         if not c.applied_at:
             c.applied_at = datetime.utcnow()
         db.session.commit()
