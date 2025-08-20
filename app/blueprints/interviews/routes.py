@@ -16,6 +16,8 @@ from uuid import uuid4
 from datetime import timedelta, date, datetime, time
 from sqlalchemy import func
 from urllib.parse import urlencode
+from sqlalchemy import inspect as sa_inspect
+from sqlalchemy.exc import SQLAlchemyError
 
 @bp.get("")
 @login_required
@@ -44,6 +46,15 @@ def list_interviews():
                 tz = int(current_user.tz_offset_minutes)
         except Exception:
             tz = None
+
+    # detect whether the interviews table actually has scheduled_at column in the running DB
+    try:
+        insp = sa_inspect(db.engine)
+        interview_cols = {c['name'] for c in insp.get_columns('interviews')}
+        has_scheduled = 'scheduled_at' in interview_cols
+    except Exception:
+        has_scheduled = False
+
     todays = []
     if tz is not None:
         # tz = minutes difference (UTC - local) from JS getTimezoneOffset()
@@ -53,18 +64,30 @@ def list_interviews():
         local_start = datetime.combine(user_local_date, time.min)
         utc_start = local_start + timedelta(minutes=tz)
         utc_end = utc_start + timedelta(days=1)
-        todays = Interview.query.filter_by(org_id=current_user.org_id).filter(Interview.scheduled_at >= utc_start, Interview.scheduled_at < utc_end).order_by(Interview.scheduled_at.asc()).all()
+        if has_scheduled:
+            todays = Interview.query.filter_by(org_id=current_user.org_id).filter(Interview.scheduled_at >= utc_start, Interview.scheduled_at < utc_end).order_by(Interview.scheduled_at.asc()).all()
+        else:
+            todays = Interview.query.filter_by(org_id=current_user.org_id).filter(Interview.created_at >= utc_start, Interview.created_at < utc_end).order_by(Interview.created_at.asc()).all()
     else:
         # fallback: use server local date
         today = date.today().isoformat()
-        todays = Interview.query.filter_by(org_id=current_user.org_id).filter(func.date(Interview.scheduled_at) == today).order_by(Interview.scheduled_at.asc()).all()
+        if has_scheduled:
+            todays = Interview.query.filter_by(org_id=current_user.org_id).filter(func.date(Interview.scheduled_at) == today).order_by(Interview.scheduled_at.asc()).all()
+        else:
+            todays = Interview.query.filter_by(org_id=current_user.org_id).filter(func.date(Interview.created_at) == today).order_by(Interview.created_at.asc()).all()
 
     # Main list query (apply filters). Exclude today's interviews from the table.
     query = Interview.query.filter_by(org_id=current_user.org_id)
     if start:
-        query = query.filter(func.date(Interview.scheduled_at) >= start)
+        if has_scheduled:
+            query = query.filter(func.date(Interview.scheduled_at) >= start)
+        else:
+            query = query.filter(func.date(Interview.created_at) >= start)
     if end:
-        query = query.filter(func.date(Interview.scheduled_at) <= end)
+        if has_scheduled:
+            query = query.filter(func.date(Interview.scheduled_at) <= end)
+        else:
+            query = query.filter(func.date(Interview.created_at) <= end)
     if status:
         query = query.filter(Interview.status == status)
     if todays:
@@ -73,7 +96,10 @@ def list_interviews():
     # order by scheduled time ascending (実施日順) with pagination
     page = request.args.get('page', default=1, type=int)
     per_page = request.args.get('per_page', default=20, type=int)
-    items_pagination = query.order_by(Interview.scheduled_at.asc()).paginate(page=page, per_page=per_page, error_out=False)
+    if has_scheduled:
+        items_pagination = query.order_by(Interview.scheduled_at.asc()).paginate(page=page, per_page=per_page, error_out=False)
+    else:
+        items_pagination = query.order_by(Interview.created_at.asc()).paginate(page=page, per_page=per_page, error_out=False)
     items = items_pagination.items
 
     # helper to build page URLs while preserving existing query params
@@ -257,12 +283,23 @@ def detail(interview_id):
 @login_required
 def download_ics(interview_id):
     i = Interview.query.filter_by(id=interview_id, org_id=current_user.org_id).first_or_404()
+    # If scheduled_at is not present in DB or is None, fallback to created_at for ICS
+    try:
+        start_dt = getattr(i, 'scheduled_at', None) or getattr(i, 'created_at', None)
+        if start_dt is None:
+            # give a safe default to avoid exceptions (use now)
+            start_dt = datetime.utcnow()
+        end_dt = start_dt + timedelta(hours=1)
+    except Exception:
+        start_dt = datetime.utcnow()
+        end_dt = start_dt + timedelta(hours=1)
+
     ics = build_ics(current_app.config['UID_DOMAIN'],
                     title=f"Interview #{i.id}",
-                    start=i.scheduled_at,
-                    end=(i.scheduled_at + timedelta(hours=1)),
-                    location=i.location or "",
-                    description=i.meeting_url or "")
+                    start=start_dt,
+                    end=end_dt,
+                    location=getattr(i, 'location', '') or "",
+                    description=getattr(i, 'meeting_url', '') or "")
     return send_file(BytesIO(ics.encode('utf-8')), as_attachment=True,
                      download_name=f"interview_{i.id}.ics", mimetype="text/calendar")
 
