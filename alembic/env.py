@@ -59,16 +59,37 @@ def run_migrations_online():
     connectable = engine_from_config({"sqlalchemy.url": url},
                                      prefix="sqlalchemy.", poolclass=pool.NullPool)
     with connectable.connect() as connection:
-        # ★ ここを“オートコミット”で実行して、失敗してもトランザクションを汚さない
+        # --- ここから追加：version テーブルを 255 で作成/拡張（オートコミット）
         try:
             ac = connection.execution_options(isolation_level="AUTOCOMMIT")
-            ac.execute(sa.text(
-                "ALTER TABLE alembic_version_long "
-                "ALTER COLUMN version_num TYPE VARCHAR(255)"
-            ))
+
+            # 1) 無ければ 255 で新規作成
+            ac.execute(sa.text("""
+                CREATE TABLE IF NOT EXISTS alembic_version_long (
+                    version_num VARCHAR(255) PRIMARY KEY
+                )
+            """))
+
+            # 2) 既存が 32 なら 255 に拡張
+            ac.execute(sa.text("""
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'alembic_version_long'
+                          AND column_name = 'version_num'
+                          AND character_maximum_length = 32
+                    ) THEN
+                        ALTER TABLE alembic_version_long
+                        ALTER COLUMN version_num TYPE VARCHAR(255);
+                    END IF;
+                END$$;
+            """))
         except Exception:
-            # テーブル未作成や型が既に広い等は無視して続行
+            # 既に作成済み/拡張済みなどは無視して続行
             pass
+        # --- 追加ここまで
 
         context.configure(
             connection=connection,
