@@ -59,12 +59,20 @@ def run_migrations_online():
     connectable = engine_from_config({"sqlalchemy.url": url},
                                      prefix="sqlalchemy.", poolclass=pool.NullPool)
     with connectable.connect() as connection:
+        # ★ ここを追加：既存 version table が VARCHAR(32) なら幅を広げる（無ければ無視）
+        try:
+            connection.execute(sa.text(
+                "ALTER TABLE alembic_version_long ALTER COLUMN version_num TYPE VARCHAR(255)"
+            ))
+        except Exception:
+            pass
+
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
             compare_type=True,
             render_as_batch=True,
-            # Use a longer version table/column so long revision IDs fit
+            # 既に設定済みの長い version table
             version_table="alembic_version_long",
             version_table_pk_column="version_num",
             version_table_pk_type=sa.String(255),
