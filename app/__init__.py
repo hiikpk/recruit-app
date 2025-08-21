@@ -33,37 +33,37 @@ def create_app():
         from .blueprints.auth import bp as auth_bp
         app.register_blueprint(auth_bp, url_prefix="/auth")
     except Exception:
-    import traceback
-    app.logger.exception('Failed to register auth blueprint: %s', traceback.format_exc())
+        import traceback
+        app.logger.exception('Failed to register auth blueprint: %s', traceback.format_exc())
 
     try:
         from .blueprints.candidates import bp as candidates_bp
         app.register_blueprint(candidates_bp, url_prefix="/candidates")
     except Exception:
-    import traceback
-    app.logger.exception('Failed to register candidates blueprint: %s', traceback.format_exc())
+        import traceback
+        app.logger.exception('Failed to register candidates blueprint: %s', traceback.format_exc())
 
     try:
         from .blueprints.interviews import bp as interviews_bp
         app.register_blueprint(interviews_bp, url_prefix="/interviews")
     except Exception:
-    import traceback
-    app.logger.exception('Failed to register interviews blueprint: %s', traceback.format_exc())
+        import traceback
+        app.logger.exception('Failed to register interviews blueprint: %s', traceback.format_exc())
 
     try:
         from .blueprints.org import bp as org_bp
         app.register_blueprint(org_bp, url_prefix="/org")
     except Exception:
-    import traceback
-    app.logger.exception('Failed to register org blueprint: %s', traceback.format_exc())
+        import traceback
+        app.logger.exception('Failed to register org blueprint: %s', traceback.format_exc())
 
     try:
         # jobs blueprint may be missing routes.py in some states; import safely
         from .blueprints.jobs import bp as jobs_bp
         app.register_blueprint(jobs_bp, url_prefix="/jobs")
     except Exception:
-    import traceback
-    app.logger.exception('Failed to register jobs blueprint: %s', traceback.format_exc())
+        import traceback
+        app.logger.exception('Failed to register jobs blueprint: %s', traceback.format_exc())
 
     @app.get('/')
     def index():
