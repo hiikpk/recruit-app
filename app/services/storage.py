@@ -17,16 +17,52 @@ def save_file(file_storage, prefix=""):
     key = f"{prefix}/{filename}" if prefix else filename
 
     if backend == 's3':
+        # build boto3 client kwargs flexibly: endpoint_url may be empty in AWS-managed S3
+        s3_kwargs = {}
+        endpoint = current_app.config.get('S3_ENDPOINT')
+        if endpoint:
+            s3_kwargs['endpoint_url'] = endpoint
+        region = current_app.config.get('S3_REGION')
+        if region:
+            s3_kwargs['region_name'] = region
+
+        # prefer virtual-hosted style addressing; ensure sigv4
+        s3_config = Config(signature_version='s3v4', s3={'addressing_style': 'virtual'})
+
         s3 = boto3.client(
             's3',
-            endpoint_url=current_app.config['S3_ENDPOINT'],
-            aws_access_key_id=current_app.config['S3_ACCESS_KEY'],
-            aws_secret_access_key=current_app.config['S3_SECRET_KEY'],
-            config=Config(signature_version='s3v4')
+            aws_access_key_id=current_app.config.get('S3_ACCESS_KEY'),
+            aws_secret_access_key=current_app.config.get('S3_SECRET_KEY'),
+            config=s3_config,
+            **s3_kwargs,
         )
-        bucket = current_app.config['S3_BUCKET']
-        s3.upload_fileobj(file_storage, bucket, key)
-        return f"s3://{bucket}/{key}"
+        bucket = current_app.config.get('S3_BUCKET')
+
+        # upload_fileobj expects a file-like object; use the underlying stream
+        stream = getattr(file_storage, 'stream', file_storage)
+        try:
+            s3.upload_fileobj(stream, bucket, key)
+            return f"s3://{bucket}/{key}"
+        except Exception as e:
+            try:
+                current_app.logger.exception('S3 upload failed, falling back to local storage: %s', e)
+            except Exception:
+                pass
+            # fallback to local storage to avoid returning 500 for user uploads
+            d = _ensure_local_dir()
+            path = os.path.join(d, key)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            try:
+                # ensure stream position at start
+                try:
+                    stream.seek(0)
+                except Exception:
+                    pass
+                file_storage.save(path)
+                return f"file://{os.path.abspath(path)}"
+            except Exception:
+                # if even local write fails, re-raise the original error
+                raise
     else:
         d = _ensure_local_dir()
         path = os.path.join(d, key)
