@@ -25,13 +25,25 @@ def upgrade() -> None:
     # to recreate the entire schema according to current models.
     from app.extensions import db
 
-    # Drop all existing tables (if any) then create all tables from models.
-    db.metadata.drop_all(bind=bind)
-    db.metadata.create_all(bind=bind)
+    # Drop all existing tables in a deterministic order using CASCADE to
+    # avoid circular FK drop issues on Postgres. We iterate table names
+    # from metadata and emit DROP TABLE IF EXISTS <name> CASCADE.
+    # After that, recreate using metadata.create_all().
+    meta = db.metadata
+    # collect table names
+    tbls = [t.name for t in meta.sorted_tables]
+    # reverse to attempt to drop dependents first (best-effort)
+    for t in reversed(tbls):
+        bind.execute(sa.text(f'DROP TABLE IF EXISTS "{t}" CASCADE'))
+    # finally recreate all tables from models
+    meta.create_all(bind=bind)
 
 
 def downgrade() -> None:
     bind = op.get_bind()
     from app.extensions import db
-    # Downgrade: drop all tables created by this migration.
-    db.metadata.drop_all(bind=bind)
+    # Downgrade: drop all tables created by this migration using CASCADE.
+    meta = db.metadata
+    tbls = [t.name for t in meta.sorted_tables]
+    for t in reversed(tbls):
+        bind.execute(sa.text(f'DROP TABLE IF EXISTS "{t}" CASCADE'))
