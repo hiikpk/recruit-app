@@ -24,9 +24,20 @@ from sqlalchemy.exc import SQLAlchemyError
 @login_required
 def list_interviews():
     # Parse optional filters from query string
-    start = request.args.get('start')
-    end = request.args.get('end')
+    start_raw = request.args.get('start')
+    end_raw = request.args.get('end')
     status = request.args.get('status')
+    # parse YYYY-MM-DD strings into date objects so SQLAlchemy/psycopg binds proper date types
+    start = None
+    end = None
+    try:
+        if start_raw:
+            start = datetime.strptime(start_raw, '%Y-%m-%d').date()
+        if end_raw:
+            end = datetime.strptime(end_raw, '%Y-%m-%d').date()
+    except Exception:
+        start = None
+        end = None
 
     # Today's interviews (separate card area).
     # If client provides tz offset (minutes, via ?tz=...), compute user's local "today" and convert to UTC window.
@@ -70,8 +81,8 @@ def list_interviews():
         else:
             todays = Interview.query.filter_by(org_id=current_user.org_id).filter(Interview.created_at >= utc_start, Interview.created_at < utc_end).order_by(Interview.created_at.asc()).all()
     else:
-        # fallback: use server local date
-        today = date.today().isoformat()
+        # fallback: use server local date (as a date object)
+        today = date.today()
         if has_scheduled:
             todays = Interview.query.filter_by(org_id=current_user.org_id).filter(func.date(Interview.scheduled_at) == today).order_by(Interview.scheduled_at.asc()).all()
         else:
