@@ -209,7 +209,6 @@ def detail(interview_id):
     # Load latest transcript metrics for this interview (if any)
     metrics = None
     try:
-        from ...extensions import db
         q = db.text(
             """
             SELECT t.metrics FROM transcripts t

@@ -38,10 +38,27 @@ def save_file(file_storage, prefix=""):
         )
         bucket = current_app.config.get('S3_BUCKET')
 
-        # upload_fileobj expects a file-like object; use the underlying stream
-        stream = getattr(file_storage, 'stream', file_storage)
+        # read whole uploaded file into memory buffer so we can retry/fallback safely
+        from io import BytesIO
         try:
-            s3.upload_fileobj(stream, bucket, key)
+            buf = BytesIO(file_storage.read())
+        except Exception:
+            # some file_storage implementations expose 'stream'
+            try:
+                stream = getattr(file_storage, 'stream', None)
+                if stream:
+                    buf = BytesIO(stream.read())
+                else:
+                    raise
+            except Exception:
+                # as a last resort, attempt to save directly and let caller see failure
+                buf = None
+
+        try:
+            upload_obj = buf if buf is not None else getattr(file_storage, 'stream', file_storage)
+            if buf is not None:
+                upload_obj.seek(0)
+            s3.upload_fileobj(upload_obj, bucket, key)
             return f"s3://{bucket}/{key}"
         except Exception as e:
             try:
@@ -53,12 +70,14 @@ def save_file(file_storage, prefix=""):
             path = os.path.join(d, key)
             os.makedirs(os.path.dirname(path), exist_ok=True)
             try:
-                # ensure stream position at start
-                try:
-                    stream.seek(0)
-                except Exception:
-                    pass
-                file_storage.save(path)
+                # write from buffer if available, otherwise attempt to save original
+                if buf is not None:
+                    with open(path, 'wb') as dst:
+                        buf.seek(0)
+                        dst.write(buf.read())
+                else:
+                    # attempt to save original file_storage (may fail if stream closed)
+                    file_storage.save(path)
                 return f"file://{os.path.abspath(path)}"
             except Exception:
                 # if even local write fails, re-raise the original error
