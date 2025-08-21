@@ -7,7 +7,11 @@ fallbacks.
 """
 
 from flask import current_app
-import requests
+try:
+    import requests
+except Exception:
+    # allow the app to start even if requests is not installed in the environment.
+    requests = None
 import json
 import mimetypes
 import re
@@ -21,6 +25,14 @@ def transcribe_whisper(audio_bytes: bytes, language: str = "ja", filename: str =
     """
     dg_key = current_app.config.get('DEEPGRAM_API_KEY')
     if not dg_key:
+        return "(ダミー) これはDeepgramで文字起こししたテキストです。"
+
+    # if requests is not available, avoid import-time failure and return dummy
+    if requests is None:
+        try:
+            current_app.logger.warning('requests not installed; skipping Deepgram call, returning dummy transcript')
+        except Exception:
+            pass
         return "(ダミー) これはDeepgramで文字起こししたテキストです。"
 
     try:
@@ -66,6 +78,13 @@ def deepgram_raw_transcribe(audio_bytes: bytes, language: str = "ja", filename: 
     """Return the full Deepgram JSON response (best-effort)."""
     dg_key = current_app.config.get('DEEPGRAM_API_KEY')
     if not dg_key:
+        return {}
+
+    if requests is None:
+        try:
+            current_app.logger.warning('requests not installed; deepgram_raw_transcribe returning empty dict')
+        except Exception:
+            pass
         return {}
 
     try:
@@ -177,6 +196,13 @@ def gen_evaluation(payload: Dict[str, Any]) -> Dict[str, Any]:
     jr = None
     for attempt in range(1, max_attempts + 1):
         try:
+            if requests is None:
+                try:
+                    current_app.logger.warning('requests not installed; skipping OpenAI call and returning fallback evaluation')
+                except Exception:
+                    pass
+                jr = None
+                break
             r = requests.post(url, headers=headers, json=body, timeout=30)
             # if we get an explicit 429, prefer honoring Retry-After header
             if r.status_code == 429:
