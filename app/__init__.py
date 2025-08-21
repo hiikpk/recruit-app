@@ -174,6 +174,14 @@ def create_app():
 
         return render_template('home.html', stats=stats, series=series)
 
+    @app.before_request
+    def _log_request_start():
+        try:
+            from flask import request
+            app.logger.debug('Incoming request: %s %s', request.method, request.path)
+        except Exception:
+            pass
+
     @app.get('/dashboard-2')
     def dashboard_2():
         # full aggregation: parse filters, compute yields and pie charts

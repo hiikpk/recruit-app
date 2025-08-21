@@ -20,6 +20,7 @@ from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.exc import SQLAlchemyError
 
 @bp.get("")
+@bp.get("/")
 @login_required
 def list_interviews():
     # Parse optional filters from query string
