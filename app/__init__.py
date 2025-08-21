@@ -334,4 +334,19 @@ def create_app():
 
         return render_template('dashboard_2.html', charts=charts, options=options, selected=selected)
 
+    # Provide a safe url_for for templates that returns '#' when endpoint cannot be built.
+    from flask import url_for as _url_for
+
+    def safe_url_for(endpoint, **values):
+        try:
+            return _url_for(endpoint, **values)
+        except Exception as e:
+            try:
+                app.logger.debug('safe_url_for failed for %s %s: %s', endpoint, values, e)
+            except Exception:
+                pass
+            return '#'
+
+    app.jinja_env.globals['safe_url_for'] = safe_url_for
+
     return app

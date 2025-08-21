@@ -29,7 +29,7 @@
     </div>
     <div class="form-actions">
       <button class="btn-primary" type="submit">{% if interview %}保存{% else %}作成{% endif %}</button>
-  <a class="btn-ghost" href="{{ url_for('interviews.list_interviews') }}">キャンセル</a>
+  <a class="btn-ghost" href="{{ safe_url_for('interviews.list_interviews') }}">キャンセル</a>
     </div>
   </form>
 </section>
@@ -40,7 +40,7 @@
 {% if interview %}
 <!-- <section class="card">
   <h3 class="card-title">面接詳細 #{{ interview.id }}</h3>
-  <a class="btn-ghost" href="{{ url_for('interviews.download_ics', interview_id=interview.id) }}">ICSダウンロード</a>
+  <a class="btn-ghost" href="{{ safe_url_for('interviews.download_ics', interview_id=interview.id) }}">ICSダウンロード</a>
   <div style="margin-top:12px">
     <p><strong>選考情報</strong></p>
     <div class="kv">
@@ -49,9 +49,9 @@
       <div><span>状態</span><p>{{ interview.status or '-' }}</p></div>
       <div><span>合否</span><p>{{ interview.result or '-' }}</p></div>
     </div>
-    <div style="margin-top:10px">
-      <a class="btn-primary" href="{{ url_for('interviews.detail', interview_id=interview.id) }}">編集</a>
-      <a class="btn-ghost" href="{{ url_for('interviews.list_interviews') }}">一覧へ戻る</a>
+      <div style="margin-top:10px">
+      <a class="btn-primary" href="{{ safe_url_for('interviews.detail', interview_id=interview.id) }}">編集</a>
+      <a class="btn-ghost" href="{{ safe_url_for('interviews.list_interviews') }}">一覧へ戻る</a>
     </div>
   </div>
 </section> -->

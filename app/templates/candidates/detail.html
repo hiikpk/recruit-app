@@ -126,7 +126,7 @@
 
   <!-- 選考情報 -->
   <section class="card">
-    <div class="card-head">
+        <div class="card-head">
       <h3 class="card-title">選考情報{% if app_row %}（Application #{{ app_row.id }}）{% endif %}</h3>
       <div style="display:flex; gap:8px; align-items:center;">
         {% if apps and apps|length > 1 %}
@@ -138,7 +138,7 @@
           </select>
         </form>
         {% endif %}
-        <a class="btn-primary" href="{{ url_for('interviews.create_interview') }}{% if app_row %}?application_id={{ app_row.id }}{% endif %}">選考情報を追加</a>
+        <a class="btn-primary" href="{{ safe_url_for('interviews.create_interview') }}{% if app_row %}?application_id={{ app_row.id }}{% endif %}">選考情報を追加</a>
       </div>
     </div>
 
@@ -147,9 +147,9 @@
       {% set step_label = {'document':'書類選考','first':'一次面接','second':'二次面接','final':'最終面接'}.get(i.step or 'document', '書類選考') %}
   {% set decision_label = {'pass':'合格','fail':'不合格','pending':'保留'}.get(i.result or 'pending', '保留') %}
       <div class="card">
-        <div class="card-head" style="margin-bottom:4px">
+          <div class="card-head" style="margin-bottom:4px">
           <strong class="sub" style="margin:0">{{ step_label }}</strong>
-          <a class="btn-ghost" href="{{ url_for('interviews.detail', interview_id=i.id) }}">詳細</a>
+          <a class="btn-ghost" href="{{ safe_url_for('interviews.detail', interview_id=i.id) }}">詳細</a>
         </div>
         <div class="kv">
           <div><span>実施日</span><p>{{ i.scheduled_at.strftime('%Y-%m-%d %H:%M') if i.scheduled_at else '-' }}</p></div>
